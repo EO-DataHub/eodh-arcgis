@@ -1,0 +1,261 @@
+<UserControl x:Class="eodh.Views.ResultsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:converters="clr-namespace:eodh.Converters"
+             mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <converters:NullToVisibilityConverter x:Key="NullToVis" />
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- Status bar -->
+        <DockPanel DockPanel.Dock="Bottom" Margin="8,4">
+            <TextBlock Text="{Binding StatusMessage}" Opacity="0.6" FontSize="11" />
+        </DockPanel>
+
+        <!-- Results list -->
+        <ListView x:Name="ResultsList"
+                  ItemsSource="{Binding Results}"
+                  SelectedItem="{Binding SelectedItem}"
+                  SelectionChanged="ResultsList_SelectionChanged"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  BorderThickness="0">
+
+            <ListView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Vertical" />
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
+
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                </Style>
+            </ListView.ItemContainerStyle>
+
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Border BorderBrush="Gray"
+                            BorderThickness="0,0,0,1"
+                            Padding="8,6"
+                            Cursor="Hand">
+                        <Border.InputBindings>
+                            <MouseBinding MouseAction="LeftDoubleClick"
+                                          Command="{Binding LoadCommand}" />
+                        </Border.InputBindings>
+
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="60" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Thumbnail -->
+                            <Border Width="56" Height="56"
+                                    Background="#20808080"
+                                    CornerRadius="3">
+                                <Image Source="{Binding Thumbnail}"
+                                       Stretch="UniformToFill"
+                                       RenderOptions.BitmapScalingMode="HighQuality" />
+                            </Border>
+
+                            <!-- Metadata -->
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="{Binding ItemId}"
+                                           FontWeight="SemiBold"
+                                           FontSize="11"
+                                           TextTrimming="CharacterEllipsis" />
+
+                                <TextBlock FontSize="10" Opacity="0.7">
+                                    <Run Text="{Binding Collection, Mode=OneWay}" />
+                                </TextBlock>
+
+                                <WrapPanel Margin="0,2,0,0">
+                                    <TextBlock Text="{Binding AcquisitionDate}"
+                                               FontSize="10" Margin="0,0,8,0" />
+                                    <TextBlock Text="{Binding Resolution}"
+                                               FontSize="10" Margin="0,0,8,0"
+                                               Visibility="{Binding Resolution, Converter={StaticResource NullToVis}}" />
+                                    <TextBlock Text="{Binding CloudCover}"
+                                               FontSize="10" Margin="0,0,8,0"
+                                               Visibility="{Binding CloudCover, Converter={StaticResource NullToVis}}" />
+                                    <TextBlock Text="{Binding AoiOverlap}"
+                                               FontSize="10" Margin="0,0,8,0"
+                                               Visibility="{Binding AoiOverlap, Converter={StaticResource NullToVis}}" />
+                                    <TextBlock Text="{Binding LocationalAccuracy}"
+                                               FontSize="10" Margin="0,0,8,0"
+                                               Visibility="{Binding LocationalAccuracy, Converter={StaticResource NullToVis}}" />
+                                    <TextBlock Text="{Binding LicenseInfo}"
+                                               FontSize="10"
+                                               Visibility="{Binding LicenseInfo, Converter={StaticResource NullToVis}}" />
+                                </WrapPanel>
+
+                                <!-- Clickable asset count with inline expandable list -->
+                                <StackPanel Margin="0,1,0,0">
+                                    <TextBlock Text="{Binding AssetCount}"
+                                               FontSize="10"
+                                               Foreground="#3070C0"
+                                               TextDecorations="Underline"
+                                               Cursor="Hand">
+                                        <TextBlock.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding ToggleAssetsPopupCommand}" />
+                                        </TextBlock.InputBindings>
+                                    </TextBlock>
+                                    <ItemsControl ItemsSource="{Binding AllAssets}"
+                                                  Visibility="{Binding IsAssetsPopupOpen, Converter={StaticResource BoolToVis}}"
+                                                  Margin="0,3,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Padding="1,2" BorderBrush="#EEEEEE"
+                                                        BorderThickness="0,0,0,1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox IsChecked="{Binding IsSelected}"
+                                                                 IsEnabled="{Binding IsLoadable}"
+                                                                 ToolTip="{Binding Key}"
+                                                                 VerticalContentAlignment="Center">
+                                                            <TextBlock Text="{Binding DisplayName}"
+                                                                       FontSize="10"
+                                                                       TextTrimming="CharacterEllipsis">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsLoadable}" Value="False">
+                                                                                <Setter Property="Opacity" Value="0.4" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </CheckBox>
+                                                        <Border Grid.Column="1"
+                                                                CornerRadius="2"
+                                                                Padding="4,1"
+                                                                Margin="6,0,0,0">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Background" Value="#E0F0E0" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsLoadable}" Value="False">
+                                                                            <Setter Property="Background" Value="#F0E0E0" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock Text="{Binding FileType}"
+                                                                       FontSize="9"
+                                                                       HorizontalAlignment="Center">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Foreground" Value="#407040" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsLoadable}" Value="False">
+                                                                                <Setter Property="Foreground" Value="#906060" />
+                                                                                <Setter Property="Opacity" Value="0.6" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <!-- Loading indicator for this item -->
+                                <ProgressBar IsIndeterminate="True"
+                                             Visibility="{Binding IsLoadingLayer, Converter={StaticResource BoolToVis}}"
+                                             Height="2" Margin="0,3,0,0" />
+                            </StackPanel>
+
+                            <!-- Purchase panel (commercial items only) -->
+                            <Border Grid.Row="1" Grid.ColumnSpan="2"
+                                    Margin="0,6,0,0"
+                                    Padding="8,6"
+                                    Background="#10FFD700"
+                                    CornerRadius="3"
+                                    Visibility="{Binding IsCommercial, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Provider, StringFormat='Commercial ({0})'}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Foreground="DarkGoldenrod" Margin="0,0,0,4" />
+
+                                    <!-- Licence selector -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                                                Visibility="{Binding LicenceOptions, Converter={StaticResource NullToVis}}">
+                                        <TextBlock Text="Licence:" FontSize="10"
+                                                   VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <ComboBox ItemsSource="{Binding LicenceOptions}"
+                                                  SelectedItem="{Binding SelectedLicence}"
+                                                  FontSize="10" MinWidth="120" />
+                                    </StackPanel>
+
+                                    <!-- End-user country (Airbus Optical) -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                                                Visibility="{Binding RequiresEndUserCountry, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="Country:" FontSize="10"
+                                                   VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <TextBox Text="{Binding EndUserCountry, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="10" MinWidth="40" MaxLength="3" />
+                                    </StackPanel>
+
+                                    <!-- Quote button and result -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Button Content="Get Quote"
+                                                Command="{Binding GetQuoteCommand}"
+                                                Padding="8,2" FontSize="10" />
+                                        <ProgressBar IsIndeterminate="True"
+                                                     Visibility="{Binding IsQuoting, Converter={StaticResource BoolToVis}}"
+                                                     Width="60" Height="2" Margin="8,0,0,0"
+                                                     VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding QuoteDisplay}"
+                                                   FontSize="10" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0"
+                                                   Visibility="{Binding HasQuote, Converter={StaticResource BoolToVis}}" />
+                                    </StackPanel>
+
+                                    <!-- Order button (visible after quote) -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                                                Visibility="{Binding HasQuote, Converter={StaticResource BoolToVis}}">
+                                        <Button Content="Place Order"
+                                                Command="{Binding PlaceOrderCommand}"
+                                                Padding="8,2" FontSize="10" />
+                                        <ProgressBar IsIndeterminate="True"
+                                                     Visibility="{Binding IsOrdering, Converter={StaticResource BoolToVis}}"
+                                                     Width="60" Height="2" Margin="8,0,0,0"
+                                                     VerticalAlignment="Center" />
+                                    </StackPanel>
+
+                                    <!-- Status / Error messages -->
+                                    <TextBlock Text="{Binding PurchaseStatus}"
+                                               FontSize="10" Foreground="Green"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding PurchaseStatus, Converter={StaticResource NullToVis}}" />
+                                    <TextBlock Text="{Binding PurchaseError}"
+                                               FontSize="10" Foreground="Red"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding PurchaseError, Converter={StaticResource NullToVis}}" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </DockPanel>
+</UserControl>

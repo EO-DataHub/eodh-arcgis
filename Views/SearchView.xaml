@@ -1,0 +1,103 @@
+<UserControl x:Class="eodh.Views.SearchView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:converters="clr-namespace:eodh.Converters"
+             mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="8">
+
+            <!-- Catalog Selection -->
+            <TextBlock Text="Catalog" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <ComboBox ItemsSource="{Binding Catalogs}"
+                      DisplayMemberPath="DisplayName"
+                      SelectedItem="{Binding SelectedCatalog}"
+                      Margin="0,0,0,12" />
+
+            <!-- Collection Selection -->
+            <TextBlock Text="Collection" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <ComboBox ItemsSource="{Binding Collections}"
+                      DisplayMemberPath="DisplayName"
+                      SelectedItem="{Binding SelectedCollection}"
+                      IsEditable="True"
+                      Margin="0,0,0,12" />
+
+            <!-- AOI (Area of Interest) -->
+            <TextBlock Text="Area of Interest" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <Grid Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Content="Draw on Map"
+                        Command="{Binding DrawAoiCommand}"
+                        Margin="0,0,4,0" Padding="4,3" />
+                <Button Content="Map Extent"
+                        Command="{Binding UseMapExtentCommand}"
+                        Grid.Column="1" Margin="4,0,4,0" Padding="4,3" />
+                <Button Content="Import GeoJSON"
+                        Command="{Binding ImportAoiCommand}"
+                        Grid.Column="2" Margin="4,0,0,0" Padding="4,3" />
+            </Grid>
+            <TextBlock Text="{Binding AoiDescription}"
+                       Opacity="0.6" FontSize="11"
+                       Margin="0,0,0,12" />
+
+            <!-- Date Range -->
+            <TextBlock Text="Date Range" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <DatePicker SelectedDate="{Binding StartDate}" />
+                <TextBlock Text=" to " VerticalAlignment="Center" Grid.Column="1" Margin="4,0" />
+                <DatePicker SelectedDate="{Binding EndDate}" Grid.Column="2" />
+            </Grid>
+
+            <!-- Cloud Cover -->
+            <TextBlock Text="Max Cloud Cover" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="45" />
+                </Grid.ColumnDefinitions>
+                <Slider Value="{Binding MaxCloudCover}"
+                        Minimum="0" Maximum="100"
+                        TickFrequency="10" IsSnapToTickEnabled="False" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding MaxCloudCover, StringFormat={}{0:F0}%}"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Right" />
+            </Grid>
+
+            <!-- Search Button -->
+            <Button Content="Search"
+                    Command="{Binding SearchCommand}"
+                    HorizontalAlignment="Stretch"
+                    Padding="8,6"
+                    FontWeight="SemiBold"
+                    Margin="0,4,0,0" />
+
+            <!-- Loading indicator -->
+            <ProgressBar IsIndeterminate="True"
+                         Visibility="{Binding IsSearching, Converter={StaticResource BoolToVis}}"
+                         Margin="0,8,0,0"
+                         Height="3" />
+
+            <!-- Result summary -->
+            <TextBlock Text="{Binding ResultSummary}"
+                       Opacity="0.6" FontSize="11"
+                       Margin="0,8,0,0" />
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

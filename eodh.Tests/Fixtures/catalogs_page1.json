@@ -1,0 +1,1 @@
+{"catalogs":[{"id":"airbus","description":"Airbus Datasets","stac_version":"1.0.0","links":[]},{"id":"ceda","description":"CEDA Datasets","stac_version":"1.0.0","links":[]}],"links":[{"rel":"next","type":"application/json","method":"GET","href":"https://eodatahub.org.uk/api/catalogue/stac/catalogs?token=page2"}],"numReturned":2,"numMatched":3}

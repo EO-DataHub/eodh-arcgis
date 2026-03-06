@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": "S2A_20240310_T30UXC",
+      "collection": "sentinel-2-ard",
+      "geometry": null,
+      "bbox": [-1.5, 51.0, 0.5, 52.0],
+      "properties": {
+        "datetime": "2024-03-10T10:28:00Z",
+        "eo:cloud_cover": 8.1,
+        "gsd": 10.0,
+        "proj:epsg": 32630,
+        "title": "Sentinel-2A T30UXC Page 2"
+      },
+      "assets": {},
+      "links": []
+    }
+  ],
+  "links": [],
+  "numberMatched": 25,
+  "numberReturned": 1,
+  "context": {
+    "matched": 25,
+    "returned": 1,
+    "limit": 50
+  }
+}

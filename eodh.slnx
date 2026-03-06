@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="eodh.csproj" />
+  <Project Path="eodh.Tests/eodh.Tests.csproj" />
+</Solution>

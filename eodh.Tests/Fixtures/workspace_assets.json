@@ -1,0 +1,18 @@
+[
+  {
+    "id": "asset-001",
+    "name": "Sentinel-2 ARD Scene London",
+    "collectionId": "sentinel2_ard",
+    "itemId": "S2B_20260216_latn518lonw0008_T30UXC",
+    "status": "available",
+    "purchasedAt": "2026-02-16T12:00:00Z"
+  },
+  {
+    "id": "asset-002",
+    "name": "Airbus Pleiades Neo",
+    "collectionId": "pneo",
+    "itemId": "PNEO_20260101_london",
+    "status": "pending",
+    "purchasedAt": null
+  }
+]

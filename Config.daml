@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ArcGIS defaultAssembly="eodh.dll"
+        defaultNamespace="eodh"
+        xmlns="http://schemas.esri.com/DADF/Registry"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
+
+  <AddInInfo id="{3a954d6c-8c15-4da5-be39-c7936b4eea22}" version="1.0" desktopVersion="3.6.59527" product="ArcGISPro">
+    <Name>EODH</Name>
+    <Description>Search, filter, preview, and load datasets from the UK EO Data Hub</Description>
+    <Image>Images\AddInDesktop32.png</Image>
+    <Date>2/24/2026 2:27:26 PM</Date>
+    <Subject>Framework</Subject>
+  </AddInInfo>
+
+  <modules>
+    <insertModule id="eodh_Module" className="Module1" autoLoad="false" caption="EODH">
+
+      <tabs>
+        <tab id="eodh_Tab" caption="EODH">
+          <group refID="eodh_Group1" />
+        </tab>
+      </tabs>
+
+      <groups>
+        <group id="eodh_Group1" caption="EO Data Hub" appearsOnAddInTab="true">
+          <button refID="eodh_MainDockpane_ShowButton" size="large" />
+        </group>
+      </groups>
+
+      <controls>
+        <button id="eodh_MainDockpane_ShowButton"
+                caption="EODH Search"
+                className="ShowMainDockpaneButton"
+                loadOnClick="true"
+                smallImage="Images\AddInDesktop16.png"
+                largeImage="Images\AddInDesktop32.png">
+          <tooltip heading="EODH Search">
+            Open the EO Data Hub search panel to discover and load satellite imagery.
+          </tooltip>
+        </button>
+        <tool id="eodh_DrawAoiTool"
+              caption="Draw AOI"
+              className="Tools.DrawAoiTool"
+              loadOnClick="true"
+              smallImage="Images\AddInDesktop16.png"
+              largeImage="Images\AddInDesktop32.png"
+              condition="esri_mapping_mapPane">
+          <tooltip heading="Draw AOI">
+            Draw a rectangle on the map to define your area of interest for STAC search.
+          </tooltip>
+        </tool>
+      </controls>
+
+      <dockPanes>
+        <dockPane id="eodh_MainDockpane"
+                  caption="EO Data Hub"
+                  className="ViewModels.MainDockpaneViewModel"
+                  dock="group"
+                  dockWith="esri_core_projectDockPane"
+                  width="420">
+          <content className="Views.MainDockpaneView" />
+        </dockPane>
+      </dockPanes>
+
+    </insertModule>
+  </modules>
+</ArcGIS>

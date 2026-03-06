@@ -1,0 +1,30 @@
+[
+  {
+    "id": "ws-001",
+    "name": "EO Research",
+    "description": "Earth observation research workspace",
+    "members": [
+      { "username": "testuser", "role": "owner" },
+      { "username": "collaborator", "role": "member" }
+    ],
+    "assets": [
+      {
+        "id": "asset-001",
+        "name": "Sentinel-2 Scene",
+        "collectionId": "sentinel2_ard",
+        "itemId": "S2B_20260216",
+        "status": "available",
+        "purchasedAt": "2026-02-16T10:00:00Z"
+      }
+    ]
+  },
+  {
+    "id": "ws-002",
+    "name": "Sentinel Monitoring",
+    "description": null,
+    "members": [
+      { "username": "testuser", "role": "viewer" }
+    ],
+    "assets": []
+  }
+]
