@@ -12,7 +12,7 @@ namespace eodh.Services;
 
 /// <summary>
 /// Loads STAC assets into ArcGIS Pro as map layers.
-/// Handles COG, WMS/WMTS, and reprojection to EPSG:27700 (OSGB).
+/// Handles COG, NetCDF, WMS/WMTS, and reprojection to EPSG:27700 (OSGB).
 /// </summary>
 public class LayerService
 {
@@ -60,12 +60,16 @@ public class LayerService
         var href = asset.Href;
         var fileType = asset.FileType;
 
-        if (fileType is not ("COG" or "GeoTIFF"))
+        if (fileType is not ("COG" or "GeoTIFF" or "NetCDF"))
             return null;
 
         // No active map — nowhere to add a layer
         if (!HasActiveMap())
             return null;
+
+        // NetCDF uses a dedicated loading path with MakeMultidimensionalRasterLayer
+        if (fileType == "NetCDF")
+            return await LoadNetCdfAssetAsync(asset, assetKey, layerName);
 
         var sw = Stopwatch.StartNew();
         Log($"LOAD START: {assetKey ?? "?"} | {fileType} | {href}");
@@ -180,6 +184,97 @@ public class LayerService
     }
 
     #region Private Methods
+
+    /// <summary>
+    /// Load a NetCDF asset using MakeMultidimensionalRasterLayer GP tool.
+    /// Tries vsicurl streaming first, then falls back to download.
+    /// </summary>
+    private async Task<Layer?> LoadNetCdfAssetAsync(StacAsset asset, string? assetKey, string layerName)
+    {
+        var href = asset.Href;
+        var sw = Stopwatch.StartNew();
+        Log($"NETCDF LOAD START: {assetKey ?? "?"} | {href}");
+
+        // Tier 0: Load from download cache
+        var cachedPath = FileDownloader.GetCachedPath(href);
+        if (cachedPath != null)
+        {
+            Log($"NETCDF CACHE HIT: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms | {cachedPath}");
+            return await LoadMultidimensionalLayer(cachedPath, layerName, assetKey, sw);
+        }
+
+        // Tier 1: Try /vsicurl/ streaming via MakeMultidimensionalRasterLayer
+        if (href.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var vsicurlPath = "/vsicurl/" + href;
+                var gpArgs = Geoprocessing.MakeValueArray(vsicurlPath, layerName);
+                var gpResult = await Geoprocessing.ExecuteToolAsync(
+                    "md.MakeMultidimensionalRasterLayer", gpArgs);
+                if (!gpResult.IsFailed)
+                {
+                    var layer = await QueuedTask.Run(() =>
+                        MapView.Active?.Map?.GetLayersAsFlattenedList()
+                            .FirstOrDefault(l => l.Name == layerName));
+                    Log($"NETCDF TIER 1 VSICURL OK: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
+                    return layer;
+                }
+                Log($"NETCDF TIER 1 VSICURL FAILED: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
+            }
+            catch (Exception ex)
+            {
+                Log($"NETCDF TIER 1 VSICURL ERROR: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms | {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        // Tier 2: Download to temp, then load locally
+        Log($"NETCDF DOWNLOAD START: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
+        var localPath = await FileDownloader.DownloadToTempAsync(href);
+        if (localPath == null)
+            throw new InvalidOperationException($"Failed to download NetCDF asset from {href}");
+
+        Log($"NETCDF DOWNLOAD DONE: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms | {localPath}");
+        return await LoadMultidimensionalLayer(localPath, layerName, assetKey, sw);
+    }
+
+    /// <summary>
+    /// Load a local file as a multidimensional raster layer, falling back to LayerFactory.
+    /// </summary>
+    private async Task<Layer?> LoadMultidimensionalLayer(
+        string localPath, string layerName, string? assetKey, Stopwatch sw)
+    {
+        // Try MakeMultidimensionalRasterLayer GP tool
+        try
+        {
+            var gpArgs = Geoprocessing.MakeValueArray(localPath, layerName);
+            var gpResult = await Geoprocessing.ExecuteToolAsync(
+                "md.MakeMultidimensionalRasterLayer", gpArgs);
+            if (!gpResult.IsFailed)
+            {
+                var layer = await QueuedTask.Run(() =>
+                    MapView.Active?.Map?.GetLayersAsFlattenedList()
+                        .FirstOrDefault(l => l.Name == layerName));
+                Log($"NETCDF MULTIDIM OK: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
+                return layer;
+            }
+            Log($"NETCDF MULTIDIM FAILED: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
+        }
+        catch (Exception ex)
+        {
+            Log($"NETCDF MULTIDIM ERROR: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms | {ex.GetType().Name}: {ex.Message}");
+        }
+
+        // Fallback: LayerFactory (ArcGIS Pro 3.x can open .nc directly)
+        var result = await QueuedTask.Run(() =>
+        {
+            var map = MapView.Active?.Map;
+            if (map == null) return null;
+            return LoadCogLayer(map, localPath, layerName);
+        });
+        Log($"NETCDF LAYERFACTORY FALLBACK OK: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
+        return result;
+    }
 
     private static Layer? LoadCogLayer(Map map, string href, string layerName)
     {

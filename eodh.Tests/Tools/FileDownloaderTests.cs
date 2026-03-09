@@ -106,4 +106,12 @@ public class FileDownloaderTests
 
         Assert.EndsWith(".tif", path);
     }
+
+    [Fact]
+    public void GetCachePath_PreservesNcExtension()
+    {
+        var path = FileDownloader.GetCachePath("https://example.com/data.nc");
+
+        Assert.EndsWith(".nc", path);
+    }
 }
