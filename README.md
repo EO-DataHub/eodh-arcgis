@@ -23,7 +23,8 @@ Search, filter, preview, and load datasets from the [UK EO Data Hub](https://eod
 
 1. Clone the repository
 2. Open `eodh.slnx` in Visual Studio
-3. Build and run — the debugger will launch ArcGIS Pro with the add-in loaded
+3. Build and run (use the green arrow button as shown below) — the debugger will launch ArcGIS Pro with the add-in loaded
+![VS Build](./Images/vs_build.png)
 
 ### Running tests
 
