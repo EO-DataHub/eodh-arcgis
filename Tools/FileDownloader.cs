@@ -22,7 +22,7 @@ internal static class FileDownloader
     };
     private static readonly string TempDir = Path.Combine(Path.GetTempPath(), "eodh");
 
-    public static async Task<string?> DownloadToTempAsync(string url)
+    public static async Task<string?> DownloadToTempAsync(string url, string? bearerToken = null)
     {
         try
         {
@@ -33,7 +33,12 @@ internal static class FileDownloader
             if (File.Exists(tempPath) && new FileInfo(tempPath).Length > 0)
                 return tempPath;
 
-            using var response = await Client.GetAsync(url);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (!string.IsNullOrEmpty(bearerToken))
+                request.Headers.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
+
+            using var response = await Client.SendAsync(request);
             if (!response.IsSuccessStatusCode) return null;
 
             // Reject HTML responses (login pages, soft-404 error pages after redirect)

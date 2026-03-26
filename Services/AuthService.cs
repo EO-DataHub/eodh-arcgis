@@ -36,6 +36,11 @@ public class AuthService
     public string? Username => _username;
 
     /// <summary>
+    /// The current API token (Bearer token) for authenticated requests.
+    /// </summary>
+    public string? ApiToken => _apiToken;
+
+    /// <summary>
     /// The current environment name (production, staging, test).
     /// </summary>
     public string Environment => _environment;

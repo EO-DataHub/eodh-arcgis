@@ -20,7 +20,7 @@ public class TimelineViewModelTests
         var handler = new FixtureHttpHandler();
         var auth = new TestAuthService(handler);
         var stacClient = new StacClient(auth);
-        var layerService = new LayerService();
+        var layerService = new LayerService(auth);
         var thumbnailCache = new ThumbnailCache();
         return new TimelineViewModel(stacClient, layerService, thumbnailCache);
     }

@@ -21,7 +21,7 @@ public class ResultsViewModelTests
         var handler = new FixtureHttpHandler();
         var auth = new TestAuthService(handler);
         var stacClient = new StacClient(auth);
-        var layerService = new LayerService();
+        var layerService = new LayerService(auth);
         var thumbnailCache = new ThumbnailCache();
         return new ResultsViewModel(stacClient, layerService, thumbnailCache);
     }
@@ -132,6 +132,24 @@ public class ResultsViewModelTests
     }
 
     [Fact]
+    public void LoadResults_HasResultsFalse_WhenNoResults()
+    {
+        var vm = CreateVm();
+        vm.LoadResults([], null);
+
+        Assert.False(vm.HasResults);
+    }
+
+    [Fact]
+    public void LoadResults_HasResultsTrue_WhenResultsExist()
+    {
+        var vm = CreateVm();
+        vm.LoadResults(CreateTestItems(3), null);
+
+        Assert.True(vm.HasResults);
+    }
+
+    [Fact]
     public void LoadResults_PassesCollectionLicense_ToResultItems()
     {
         var vm = CreateVm();
@@ -160,7 +178,7 @@ public class ResultItemViewModelTests
     private static ResultItemViewModel CreateItemVm(StacItem item, double[]? aoiBbox = null, string? collectionLicense = null)
     {
         var thumbnailCache = new ThumbnailCache();
-        var layerService = new LayerService();
+        var layerService = new LayerService(new AuthService());
         return new ResultItemViewModel(item, thumbnailCache, layerService, aoiBbox, collectionLicense);
     }
 

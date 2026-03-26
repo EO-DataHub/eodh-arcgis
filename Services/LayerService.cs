@@ -19,6 +19,13 @@ public class LayerService
     /// <summary>OSGB 1936 / British National Grid.</summary>
     private const int OsgbEpsg = 27700;
 
+    private readonly AuthService _authService;
+
+    public LayerService(AuthService authService)
+    {
+        _authService = authService;
+    }
+
     static LayerService()
     {
         // Parallel HTTP range requests for COG tile fetching
@@ -93,6 +100,7 @@ public class LayerService
         {
             try
             {
+                SetGdalAuthHeaders();
                 var vsicurlPath = "/vsicurl/" + href;
                 var gpArgs = Geoprocessing.MakeValueArray(vsicurlPath, layerName);
                 var gpResult = await Geoprocessing.ExecuteToolAsync(
@@ -133,7 +141,7 @@ public class LayerService
 
         // Tier 3: Download to temp (with caching) and load locally
         Log($"TIER 3 DOWNLOAD START: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
-        var tempPath = await FileDownloader.DownloadToTempAsync(href);
+        var tempPath = await FileDownloader.DownloadToTempAsync(href, _authService.ApiToken);
         if (tempPath == null) throw new InvalidOperationException(
             $"Failed to download asset from {href}");
 
@@ -208,6 +216,7 @@ public class LayerService
         {
             try
             {
+                SetGdalAuthHeaders();
                 var vsicurlPath = "/vsicurl/" + href;
                 var gpArgs = Geoprocessing.MakeValueArray(vsicurlPath, layerName);
                 var gpResult = await Geoprocessing.ExecuteToolAsync(
@@ -230,7 +239,7 @@ public class LayerService
 
         // Tier 2: Download to temp, then load locally
         Log($"NETCDF DOWNLOAD START: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
-        var localPath = await FileDownloader.DownloadToTempAsync(href);
+        var localPath = await FileDownloader.DownloadToTempAsync(href, _authService.ApiToken);
         if (localPath == null)
             throw new InvalidOperationException($"Failed to download NetCDF asset from {href}");
 
@@ -274,6 +283,16 @@ public class LayerService
         });
         Log($"NETCDF LAYERFACTORY FALLBACK OK: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
         return result;
+    }
+
+    /// <summary>
+    /// Set GDAL HTTP Authorization header so /vsicurl/ can access authenticated URLs.
+    /// </summary>
+    private void SetGdalAuthHeaders()
+    {
+        var token = _authService.ApiToken;
+        if (!string.IsNullOrEmpty(token))
+            Environment.SetEnvironmentVariable("GDAL_HTTP_HEADERS", $"Authorization: Bearer {token}");
     }
 
     private static Layer? LoadCogLayer(Map map, string href, string layerName)

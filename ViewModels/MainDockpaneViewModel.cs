@@ -32,7 +32,7 @@ internal class MainDockpaneViewModel : DockPane
         _authService = authService;
         var stacClient = new Services.StacClient(authService);
         var thumbnailCache = new Services.ThumbnailCache();
-        var layerService = new Services.LayerService();
+        var layerService = new Services.LayerService(authService);
         var workspaceService = new Services.WorkspaceService(authService);
 
         _loginViewModel = new LoginViewModel(authService, OnLoginSuccess);
