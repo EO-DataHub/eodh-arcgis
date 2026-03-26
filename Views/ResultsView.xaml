@@ -8,6 +8,7 @@
 
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
         <converters:NullToVisibilityConverter x:Key="NullToVis" />
     </UserControl.Resources>
 
@@ -17,8 +18,18 @@
             <TextBlock Text="{Binding StatusMessage}" Opacity="0.6" FontSize="11" />
         </DockPanel>
 
+        <!-- No results message -->
+        <TextBlock Text="No results found"
+                   HorizontalAlignment="Center"
+                   Margin="0,24,0,0"
+                   FontWeight="Bold"
+                   FontSize="13"
+                   Opacity="0.6"
+                   Visibility="{Binding HasResults, Converter={StaticResource InverseBoolToVis}}" />
+
         <!-- Results list -->
         <ListView x:Name="ResultsList"
+                  Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}"
                   ItemsSource="{Binding Results}"
                   SelectedItem="{Binding SelectedItem}"
                   SelectionChanged="ResultsList_SelectionChanged"

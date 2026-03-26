@@ -22,6 +22,7 @@ internal class ResultsViewModel : PropertyChangedBase
 
     private ResultItemViewModel? _selectedItem;
     private bool _isLoading;
+    private bool _hasResults;
     private string _statusMessage = string.Empty;
 
     public ResultsViewModel(StacClient stacClient, LayerService layerService,
@@ -53,6 +54,12 @@ internal class ResultsViewModel : PropertyChangedBase
     {
         get => _isLoading;
         set => SetProperty(ref _isLoading, value);
+    }
+
+    public bool HasResults
+    {
+        get => _hasResults;
+        set => SetProperty(ref _hasResults, value);
     }
 
     public string StatusMessage
@@ -92,6 +99,8 @@ internal class ResultsViewModel : PropertyChangedBase
         StatusMessage = filtered > 0
             ? $"{Results.Count} results ({filtered} outside AOI excluded)"
             : $"{items.Count} results";
+
+        HasResults = Results.Count > 0;
     }
 
     public void SelectByItemId(string itemId)
