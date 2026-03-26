@@ -186,6 +186,13 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    <Button Content="Load Selected Assets"
+                                            Command="{Binding LoadCommand}"
+                                            Visibility="{Binding IsAssetsPopupOpen, Converter={StaticResource BoolToVis}}"
+                                            Margin="0,4,0,0"
+                                            FontSize="10"
+                                            Padding="6,3"
+                                            HorizontalAlignment="Left" />
                                 </StackPanel>
 
                                 <!-- Loading indicator for this item -->
