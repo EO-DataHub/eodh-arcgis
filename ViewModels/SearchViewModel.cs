@@ -48,6 +48,7 @@ internal class SearchViewModel : PropertyChangedBase
         DrawAoiCommand = new RelayCommand(ExecuteDrawAoi);
         UseMapExtentCommand = new RelayCommand(ExecuteUseMapExtent);
         ImportAoiCommand = new RelayCommand(ExecuteImportAoi);
+        ClearAoiCommand = new RelayCommand(ExecuteClearAoi, CanClearAoi);
 
         AoiSketchHelper.AoiDrawn += SetAoiFromPolygon;
     }
@@ -119,6 +120,7 @@ internal class SearchViewModel : PropertyChangedBase
     public ICommand DrawAoiCommand { get; }
     public ICommand UseMapExtentCommand { get; }
     public ICommand ImportAoiCommand { get; }
+    public ICommand ClearAoiCommand { get; }
 
     #endregion
 
@@ -153,7 +155,7 @@ internal class SearchViewModel : PropertyChangedBase
         // and WPF binding engine picks up PropertyChanged regardless of source thread.
         AoiDescription = $"Drawn AOI: {envelope.XMin:F2}, {envelope.YMin:F2} to {envelope.XMax:F2}, {envelope.YMax:F2}";
 
-        NotifyCanSearchChanged();
+        NotifyAoiCommandsChanged();
 
         _ = ShowAoiOnMap();
     }
@@ -196,7 +198,7 @@ internal class SearchViewModel : PropertyChangedBase
 
         _aoiBbox = bbox;
         AoiDescription = $"Imported AOI: {bbox[0]:F2}, {bbox[1]:F2} to {bbox[2]:F2}, {bbox[3]:F2}";
-        NotifyCanSearchChanged();
+        NotifyAoiCommandsChanged();
         _ = ShowAoiOnMap();
     }
 
@@ -228,6 +230,17 @@ internal class SearchViewModel : PropertyChangedBase
 
     private bool CanSearch() => !IsSearching && _aoiBbox != null;
 
+    private bool CanClearAoi() => _aoiBbox != null;
+
+    private void ExecuteClearAoi()
+    {
+        _aoiOverlay?.Dispose();
+        _aoiOverlay = null;
+        _aoiBbox = null;
+        AoiDescription = "No area selected";
+        NotifyAoiCommandsChanged();
+    }
+
     /// <summary>
     /// Safely raise CanExecuteChanged — uses BeginInvoke when off the UI thread
     /// to avoid deadlocking on Dispatcher.Invoke (which blocks if the UI thread
@@ -240,6 +253,16 @@ internal class SearchViewModel : PropertyChangedBase
             dispatcher.BeginInvoke(() => ((RelayCommand)SearchCommand).RaiseCanExecuteChanged());
         else
             ((RelayCommand)SearchCommand).RaiseCanExecuteChanged();
+    }
+
+    private void NotifyAoiCommandsChanged()
+    {
+        NotifyCanSearchChanged();
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher != null && !dispatcher.CheckAccess())
+            dispatcher.BeginInvoke(() => ((RelayCommand)ClearAoiCommand).RaiseCanExecuteChanged());
+        else
+            ((RelayCommand)ClearAoiCommand).RaiseCanExecuteChanged();
     }
 
     private async void ExecuteSearch()
@@ -328,7 +351,7 @@ internal class SearchViewModel : PropertyChangedBase
             {
                 _aoiBbox = bbox;
                 AoiDescription = $"Map extent: {bbox[0]:F2}, {bbox[1]:F2} to {bbox[2]:F2}, {bbox[3]:F2}";
-                NotifyCanSearchChanged();
+                NotifyAoiCommandsChanged();
                 _ = ShowAoiOnMap();
             }
         }

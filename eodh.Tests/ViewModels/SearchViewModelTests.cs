@@ -298,6 +298,35 @@ public class SearchViewModelTests
 
     #endregion
 
+    #region AOI: Clear
+
+    [Fact]
+    public void ClearAoi_CannotExecute_WhenNoAoiSet()
+    {
+        var vm = CreateVm();
+        Assert.False(vm.ClearAoiCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void ClearAoi_ResetsToNoAreaSelected()
+    {
+        var vm = CreateVm();
+        var envelope = EnvelopeBuilderEx.CreateEnvelope(
+            new Coordinate2D(-1.5, 51.0),
+            new Coordinate2D(0.5, 52.0));
+
+        vm.SetAoiFromPolygon(envelope);
+        Assert.True(vm.SearchCommand.CanExecute(null));
+
+        vm.ClearAoiCommand.Execute(null);
+
+        Assert.Equal("No area selected", vm.AoiDescription);
+        Assert.False(vm.SearchCommand.CanExecute(null));
+        Assert.False(vm.ClearAoiCommand.CanExecute(null));
+    }
+
+    #endregion
+
     #region AOI: Import GeoJSON
 
     [Fact]
