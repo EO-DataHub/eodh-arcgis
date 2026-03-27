@@ -1,4 +1,4 @@
-name: Build
+name: Build & Release
 
 on:
   push:
@@ -23,6 +23,11 @@ jobs:
 
       - name: Build
         run: msbuild eodh.csproj -p:Configuration=Release
+
+        - uses: actions/upload-artifact@v7
+          with:
+            path: bin/Release/net8.0-windows/eodh.esriAddinX
+            retention-days: 5
 
       - name: Create release
         if: github.ref_type == 'tag'
