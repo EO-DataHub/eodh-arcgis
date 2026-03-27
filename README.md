@@ -26,18 +26,36 @@ Search, filter, preview, and load datasets from the [UK EO Data Hub](https://eod
 3. Build and run (use the green arrow button as shown below) — the debugger will launch ArcGIS Pro with the add-in loaded
 ![VS Build](./Images/vs_build.png)
 
+### Building from the command line
+
+The ArcGIS Pro SDK targets require the full .NET Framework MSBuild (`dotnet build` won't work). Use the Visual Studio MSBuild directly:
+
+```powershell
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" eodh.csproj -p:Configuration=Release
+```
+
+> **Note:** The MSBuild path varies by VS edition and version. Replace `18\Community` with your installed edition (e.g. `2022\Professional`). In a VS Developer Command Prompt, `msbuild` is already on PATH.
+
 ### Running tests
 
-Unit tests (no ArcGIS Pro required):
+Build the test project first (also requires VS MSBuild), then run with `dotnet test --no-build`:
 
-```
-dotnet test -p:SkipArcGISTargets=true
+```powershell
+# Build
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" eodh.Tests/eodh.Tests.csproj -p:Configuration=Release -p:SkipArcGISTargets=true -restore
+
+# Unit tests (no ArcGIS Pro required)
+dotnet test eodh.Tests/eodh.Tests.csproj -c Release -p:SkipArcGISTargets=true --no-build
 ```
 
-Full test suite including integration tests (requires ArcGIS Pro):
+Integration tests (requires ArcGIS Pro running):
 
-```
-dotnet test -s eodh.Tests/test.runsettings
+```powershell
+# Build without SkipArcGISTargets
+& "C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" eodh.Tests/eodh.Tests.csproj -p:Configuration=Release -restore
+
+# Run full suite
+dotnet test eodh.Tests/eodh.Tests.csproj -c Release --no-build -s eodh.Tests/test.runsettings
 ```
 
 ## Project structure

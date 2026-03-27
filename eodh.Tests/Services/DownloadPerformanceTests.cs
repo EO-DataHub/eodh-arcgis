@@ -60,7 +60,7 @@ public class DownloadPerformanceTests
         // --- Parallel ---
         ClearCache();
         var swPar = Stopwatch.StartNew();
-        var results = await Task.WhenAll(TestUrls.Select(FileDownloader.DownloadToTempAsync));
+        var results = await Task.WhenAll(TestUrls.Select(url => FileDownloader.DownloadToTempAsync(url)));
         swPar.Stop();
 
         foreach (var path in results)

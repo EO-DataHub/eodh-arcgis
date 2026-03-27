@@ -1,4 +1,4 @@
-name: Build & Release
+name: Build, Test & Release
 
 on:
   push:
@@ -19,12 +19,18 @@ jobs:
         uses: microsoft/setup-msbuild@v3
 
       - name: Restore packages
-        run: dotnet restore eodh.csproj
+        run: dotnet restore eodh.slnx
 
       - name: Build
         run: msbuild eodh.csproj -p:Configuration=Release
 
-        - uses: actions/upload-artifact@v7
+      - name: Build tests
+        run: msbuild eodh.Tests/eodh.Tests.csproj -p:Configuration=Release -p:SkipArcGISTargets=true
+
+      - name: Test
+        run: dotnet test eodh.Tests/eodh.Tests.csproj -c Release -p:SkipArcGISTargets=true --no-build
+
+      - uses: actions/upload-artifact@v7
           with:
             path: bin/Release/net8.0-windows/eodh.esriAddinX
             retention-days: 5
