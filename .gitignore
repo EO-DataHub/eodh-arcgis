@@ -37,6 +37,7 @@ bld/
 *.suo
 *.user
 *.env
+.claude
 
 ## OS files
 .DS_Store

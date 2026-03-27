@@ -27,31 +27,7 @@
     <Content Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- ArcGIS Pro SDK references for integration tests (Visual Studio builds) -->
-  <ItemGroup Condition="'$(SkipArcGISTargets)' != 'true'">
-    <Reference Include="ArcGIS.Core">
-      <HintPath>C:\Program Files\ArcGIS\Pro\bin\ArcGIS.Core.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="ArcGIS.Desktop.Framework">
-      <HintPath>C:\Program Files\ArcGIS\Pro\bin\ArcGIS.Desktop.Framework.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="ArcGIS.Desktop.Core">
-      <HintPath>C:\Program Files\ArcGIS\Pro\bin\Extensions\Core\ArcGIS.Desktop.Core.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="ArcGIS.Desktop.Mapping">
-      <HintPath>C:\Program Files\ArcGIS\Pro\bin\Extensions\Mapping\ArcGIS.Desktop.Mapping.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="ArcGISPro">
-      <HintPath>C:\Program Files\ArcGIS\Pro\bin\ArcGISPro.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-
-  <!-- Exclude ArcGIS-dependent files when building from CLI without Pro SDK targets -->
+  <!-- Exclude ArcGIS-dependent files when building from CLI without Pro runtime -->
   <ItemGroup Condition="'$(SkipArcGISTargets)' == 'true'">
     <Compile Remove="Integration\**" />
     <Compile Remove="ViewModels\**" />
