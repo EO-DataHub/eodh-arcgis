@@ -24,7 +24,7 @@ After installation, a new **EODH** tab appears in the ArcGIS Pro ribbon.
 ### Signing In
 
 1. Click the **EODH Search** button in the EODH ribbon tab to open the dockpane.
-2. Select your environment (Production, Staging, or Test).
+2. Select your environment (Production, Staging, or Test). If you're not sure, select Production.
 3. Enter your workspace name and API token.
 4. Click **Sign In**.
 
