@@ -11,15 +11,9 @@ Search, filter, preview, and load datasets from the [UK EO Data Hub](https://eod
 - Purchase commercial satellite imagery (Airbus, Planet)
 - Manage workspace assets
 
-## Installation
+## Usage Guide
 
-1. Go to Github Releases or https://github.com/EO-DataHub/eodh-arcgis/releases/latest
-2. Download `eodh.esriAddinX` file
-3. Double click the downloaded file
-4. Click `Install Add-In`
-
-The EODH Add-In is now installed in your ArcGIS application!
-You can find it in a new tab named `EODH`.
+See the [Usage Guide](USAGE_GUIDE.md) for step-by-step instructions on signing in, searching for data, loading assets, and purchasing commercial imagery.
 
 ## Development
 
