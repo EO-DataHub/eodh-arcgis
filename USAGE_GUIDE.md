@@ -18,6 +18,8 @@ Workspace API keys expire after at most 30 days. The add-in does not renew them 
 
 The **EODH** tab then appears in the ArcGIS Pro ribbon.
 
+![EODH tab in the ArcGIS Pro ribbon](Images/ribbon.png)
+
 ## Signing in
 
 1. Open the EODH dockpane from the ribbon.
@@ -25,6 +27,8 @@ The **EODH** tab then appears in the ArcGIS Pro ribbon.
 3. Enter the **Workspace name**.
 4. Paste the **Workspace API key** — use the API Key, not the Token ID.
 5. Select **Sign In**.
+
+![EODH workspace sign-in form](Images/login.png)
 
 The key is encrypted locally with Windows DPAPI and is not written to logs. If a saved key is invalid or expired, the add-in returns to sign-in with an actionable message. Create or copy a current key from the [EODH workspace credentials page](https://docs.eodatahub.org.uk/Getting-Started/workspaces/workspace-credentials/).
 
@@ -40,6 +44,8 @@ Search exposes exactly two curated roots:
 - **Commercial**
 
 The add-in discovers descendant catalogues and collections at runtime. Collections appear as a flat, sorted list labelled **Provider — Collection**. Workspace, user, and internal processing catalogues are not included.
+
+![Public catalogue and provider-labelled collection selection](Images/search.png)
 
 ### Define an area of interest
 
@@ -64,7 +70,11 @@ The Results tab contains a synchronized timeline and results list. Selecting an 
 
 **Show footprints** is enabled by default. Every valid Polygon or MultiPolygon geometry on the current result page is drawn as a temporary overlay; the selected item has a stronger highlight. Turning the option off, starting a new search, signing out, clearing results, or closing the dockpane removes the overlays. Footprints do not create layers or modify the ArcGIS project.
 
+![Search result footprints and synchronized results selection](Images/results.png)
+
 Each result can show its thumbnail, item and collection identifiers, acquisition time, resolution, cloud cover, AOI overlap, locational accuracy, licence, and assets. Select supported COG, GeoTIFF, or NetCDF assets and choose **Load Selected Assets**, or double-click the result.
+
+![Expanded result asset selection](Images/assets.png)
 
 ## Commercial quotes and orders
 
@@ -75,6 +85,8 @@ Commercial controls depend on the detected provider:
 | Airbus Optical | Required; nine provider options | Visual, General Use, Basic, Analytic | End-user country |
 | Airbus SAR | Required; three provider options | SSC, MGD, GEC, EEC | Orbit; resolution except SSC; projection except SSC/MGD |
 | Planet | No licence picker | Visual, General Use, Basic, Analytic | None |
+
+![Airbus Optical commercial quote controls](Images/commercial.png)
 
 To purchase:
 
@@ -90,5 +102,7 @@ If EODH reports that provider credentials are missing, link the Airbus or Planet
 ## Workspace commercial data
 
 The Workspace tab displays commercial records for the signed-in workspace only. It does not switch workspaces or show members, workflow jobs, workflow outputs, or a raw object-store browser.
+
+![Commercial order records in the signed-in workspace](Images/workspace.png)
 
 Use the Provider and Status filters to review pending, processing, failed, and completed records. Backend messages, order identifiers, and timestamps are shown when available. Only completed records with supported assets show asset selection and **Load into map**. Use **Refresh** or **Retry** after a reported error.
