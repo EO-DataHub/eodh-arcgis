@@ -133,13 +133,28 @@ public class StacClientTests
     public async Task ValidateCredentialsAsync_TranslatesUnauthorizedResponse()
     {
         var (client, handler) = CreateClient();
-        handler.RegisterJson("/api/catalogue/stac/catalogs/public",
+        handler.RegisterJson("/api/catalogue/stac/catalogs/user/catalogs/testuser",
             "{\"detail\":\"secret-value-must-not-be-used\"}", HttpStatusCode.Unauthorized);
 
-        var error = await Assert.ThrowsAsync<ApiException>(() => client.ValidateCredentialsAsync());
+        var error = await Assert.ThrowsAsync<ApiException>(() =>
+            client.ValidateCredentialsAsync("testuser"));
 
         Assert.Equal(ApiErrorCategory.Authentication, error.Category);
         Assert.Contains("invalid or expired", error.Message);
         Assert.DoesNotContain("secret-value", error.Message);
+    }
+
+    [Fact]
+    public async Task ValidateCredentialsAsync_UsesProtectedWorkspaceCatalogue()
+    {
+        var (client, handler) = CreateClient();
+        handler.RegisterJson("/api/catalogue/stac/catalogs/user/catalogs/",
+            "{\"id\":\"my workspace\",\"type\":\"Catalog\",\"links\":[]}");
+
+        await client.ValidateCredentialsAsync("my workspace");
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("/catalogs/user/catalogs/", request.Url);
+        Assert.DoesNotContain("/catalogs/public", request.Url);
     }
 }

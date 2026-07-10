@@ -29,10 +29,17 @@ public class StacClient
     /// Validate the current bearer credential against a curated STAC root
     /// without traversing the entire catalogue tree.
     /// </summary>
-    public async Task ValidateCredentialsAsync(CancellationToken ct = default)
+    public async Task ValidateCredentialsAsync(
+        string workspaceName,
+        CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(workspaceName))
+            throw new ArgumentException("A workspace name is required.", nameof(workspaceName));
+
         using var client = _authService.CreateHttpClient();
-        using var response = await client.GetAsync(CatalogRoot.Public.Path, ct);
+        var workspacePath =
+            $"/api/catalogue/stac/catalogs/user/catalogs/{Uri.EscapeDataString(workspaceName)}";
+        using var response = await client.GetAsync(workspacePath, ct);
         await ApiResponse.EnsureSuccessAsync(response, "authentication", ct, _authService.ApiToken);
     }
 

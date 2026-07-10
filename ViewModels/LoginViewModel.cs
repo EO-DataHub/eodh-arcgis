@@ -39,7 +39,7 @@ internal class LoginViewModel : PropertyChangedBase
         try
         {
             var stacClient = new StacClient(_authService);
-            await stacClient.ValidateCredentialsAsync();
+            await stacClient.ValidateCredentialsAsync(Username);
             _onLoginSuccess.Invoke();
         }
         catch (ApiException ex) when (ex.Category == ApiErrorCategory.Authentication)
@@ -122,7 +122,7 @@ internal class LoginViewModel : PropertyChangedBase
         {
             _authService.SetCredentials(Username.Trim(), apiKey.Trim(), SelectedEnvironment);
             var stacClient = new StacClient(_authService);
-            await stacClient.ValidateCredentialsAsync();
+            await stacClient.ValidateCredentialsAsync(Username.Trim());
             _onLoginSuccess.Invoke();
         }
         catch (ApiException ex)
