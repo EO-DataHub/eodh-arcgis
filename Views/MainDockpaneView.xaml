@@ -57,10 +57,6 @@
                 <views:WorkspaceView DataContext="{Binding WorkspaceVM}" />
             </TabItem>
 
-            <TabItem Header="Workflows">
-                <views:WorkflowsView DataContext="{Binding WorkflowsVM}" />
-            </TabItem>
-
         </TabControl>
         </DockPanel>
     </Grid>

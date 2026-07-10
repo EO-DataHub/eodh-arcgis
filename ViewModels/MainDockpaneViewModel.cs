@@ -6,7 +6,7 @@ namespace eodh.ViewModels;
 
 /// <summary>
 /// ViewModel for the main EODH dockpane. Hosts tab navigation between
-/// Login, Search, Results, Workspace, and Workflows views.
+/// Login, Search, Results, and Workspace views.
 /// </summary>
 internal class MainDockpaneViewModel : DockPane
 {
@@ -17,7 +17,6 @@ internal class MainDockpaneViewModel : DockPane
     private readonly ResultsViewModel _resultsViewModel;
     private readonly TimelineViewModel _timelineViewModel;
     private readonly WorkspaceViewModel _workspaceViewModel;
-    private readonly WorkflowsViewModel _workflowsViewModel;
     private readonly Services.AuthService _authService;
 
     private bool _isLoggedIn;
@@ -40,7 +39,6 @@ internal class MainDockpaneViewModel : DockPane
         _resultsViewModel = new ResultsViewModel(stacClient, layerService, thumbnailCache, commercialOrderService);
         _timelineViewModel = new TimelineViewModel(stacClient, layerService, thumbnailCache);
         _workspaceViewModel = new WorkspaceViewModel(authService);
-        _workflowsViewModel = new WorkflowsViewModel();
 
         _timelineViewModel.SetSelectionCallback(item =>
         {
@@ -69,7 +67,6 @@ internal class MainDockpaneViewModel : DockPane
     public ResultsViewModel ResultsVM => _resultsViewModel;
     public TimelineViewModel TimelineVM => _timelineViewModel;
     public WorkspaceViewModel WorkspaceVM => _workspaceViewModel;
-    public WorkflowsViewModel WorkflowsVM => _workflowsViewModel;
 
     public bool IsLoggedIn
     {
