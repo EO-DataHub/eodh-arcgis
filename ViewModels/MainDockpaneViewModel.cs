@@ -122,16 +122,23 @@ internal class MainDockpaneViewModel : DockPane
 
     private void ExecuteLogout()
     {
+        ResultsVM.ClearResults();
         _authService.ClearCredentials();
         IsLoggedIn = false;
         LoggedInUsername = string.Empty;
         LoggedInEnvironment = string.Empty;
     }
 
+    protected override void OnHidden()
+    {
+        ResultsVM.ClearResults();
+        base.OnHidden();
+    }
+
     private void OnSearchCompleted(List<Models.StacItem> results)
     {
         ResultsVM.LoadResults(results, SearchVM.CurrentFilters, SearchVM.SelectedCollection?.Collection.License);
-        TimelineVM.LoadResults(results);
+        TimelineVM.LoadResults(ResultsVM.Results.Select(result => result.Item).ToList());
         SelectedTabIndex = 1;
     }
 

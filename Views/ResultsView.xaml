@@ -13,10 +13,16 @@
     </UserControl.Resources>
 
     <DockPanel>
+        <CheckBox DockPanel.Dock="Top"
+                  Content="Show footprints"
+                  IsChecked="{Binding ShowFootprints}"
+                  Margin="8,5,8,2" />
+
         <!-- Status bar -->
-        <DockPanel DockPanel.Dock="Bottom" Margin="8,4">
+        <StackPanel DockPanel.Dock="Bottom" Margin="8,4">
             <TextBlock Text="{Binding StatusMessage}" Opacity="0.6" FontSize="11" />
-        </DockPanel>
+            <TextBlock Text="{Binding FootprintStatus}" Opacity="0.6" FontSize="10" />
+        </StackPanel>
 
         <!-- No results message -->
         <TextBlock Text="No results found"

@@ -19,19 +19,24 @@ internal class ResultsViewModel : PropertyChangedBase
     private readonly LayerService _layerService;
     private readonly ThumbnailCache _thumbnailCache;
     private readonly WorkspaceService? _workspaceService;
+    private readonly FootprintOverlayService _footprintOverlayService;
 
     private ResultItemViewModel? _selectedItem;
     private bool _isLoading;
     private bool _hasResults;
     private string _statusMessage = string.Empty;
+    private string _footprintStatus = string.Empty;
+    private bool _showFootprints = true;
 
     public ResultsViewModel(StacClient stacClient, LayerService layerService,
-        ThumbnailCache thumbnailCache, WorkspaceService? workspaceService = null)
+        ThumbnailCache thumbnailCache, WorkspaceService? workspaceService = null,
+        FootprintOverlayService? footprintOverlayService = null)
     {
         _stacClient = stacClient;
         _layerService = layerService;
         _thumbnailCache = thumbnailCache;
         _workspaceService = workspaceService;
+        _footprintOverlayService = footprintOverlayService ?? new FootprintOverlayService();
 
         LoadSelectedCommand = new RelayCommand(ExecuteLoadSelected, () => SelectedItem != null);
     }
@@ -45,8 +50,11 @@ internal class ResultsViewModel : PropertyChangedBase
         get => _selectedItem;
         set
         {
-            SetProperty(ref _selectedItem, value);
-            ((RelayCommand)LoadSelectedCommand).RaiseCanExecuteChanged();
+            if (SetProperty(ref _selectedItem, value))
+            {
+                ((RelayCommand)LoadSelectedCommand).RaiseCanExecuteChanged();
+                _ = _footprintOverlayService.HighlightAsync(value?.Item.Id);
+            }
         }
     }
 
@@ -68,6 +76,22 @@ internal class ResultsViewModel : PropertyChangedBase
         set => SetProperty(ref _statusMessage, value);
     }
 
+    public string FootprintStatus
+    {
+        get => _footprintStatus;
+        set => SetProperty(ref _footprintStatus, value);
+    }
+
+    public bool ShowFootprints
+    {
+        get => _showFootprints;
+        set
+        {
+            if (SetProperty(ref _showFootprints, value))
+                _ = RenderFootprintsAsync();
+        }
+    }
+
     public ICommand LoadSelectedCommand { get; }
     #endregion
 
@@ -75,6 +99,7 @@ internal class ResultsViewModel : PropertyChangedBase
 
     public void LoadResults(List<StacItem> items, SearchFilters? filters, string? collectionLicense = null)
     {
+        SelectedItem = null;
         Results.Clear();
 
         var filtered = 0;
@@ -101,11 +126,22 @@ internal class ResultsViewModel : PropertyChangedBase
             : $"{items.Count} results";
 
         HasResults = Results.Count > 0;
+        _ = RenderFootprintsAsync();
     }
 
     public void SelectByItemId(string itemId)
     {
         SelectedItem = Results.FirstOrDefault(r => r.Item.Id == itemId);
+    }
+
+    public void ClearResults()
+    {
+        SelectedItem = null;
+        Results.Clear();
+        HasResults = false;
+        StatusMessage = string.Empty;
+        FootprintStatus = string.Empty;
+        _ = _footprintOverlayService.ClearAsync();
     }
 
     #endregion
@@ -116,6 +152,27 @@ internal class ResultsViewModel : PropertyChangedBase
     {
         if (SelectedItem == null) return;
         await SelectedItem.LoadIntoMapAsync();
+    }
+
+    private async Task RenderFootprintsAsync()
+    {
+        try
+        {
+            var result = await _footprintOverlayService.ReplaceAsync(
+                Results.Select(result => result.Item),
+                SelectedItem?.Item.Id,
+                ShowFootprints);
+
+            FootprintStatus = !ShowFootprints || Results.Count == 0
+                ? string.Empty
+                : result.SkippedCount > 0
+                    ? $"Footprints: {result.RenderedCount} shown, {result.SkippedCount} unavailable"
+                    : $"Footprints: {result.RenderedCount} shown";
+        }
+        catch (Exception)
+        {
+            FootprintStatus = "Footprints could not be displayed on the active map.";
+        }
     }
 
     #endregion
