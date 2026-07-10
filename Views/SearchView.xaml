@@ -26,7 +26,12 @@
                       DisplayMemberPath="DisplayName"
                       SelectedItem="{Binding SelectedCollection}"
                       IsEditable="True"
-                      Margin="0,0,0,12" />
+                      Margin="0,0,0,4" />
+            <ProgressBar IsIndeterminate="True"
+                         Visibility="{Binding IsLoadingCollections, Converter={StaticResource BoolToVis}}"
+                         Height="3" Margin="0,0,0,4" />
+            <TextBlock Text="Collections are discovered recursively from the selected curated catalogue."
+                       FontSize="10" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
 
             <!-- AOI (Area of Interest) -->
             <TextBlock Text="Area of Interest" FontWeight="SemiBold" Margin="0,0,0,4" />
@@ -82,6 +87,9 @@
                            VerticalAlignment="Center"
                            HorizontalAlignment="Right" />
             </Grid>
+
+            <TextBlock Text="Cloud cover applies only to datasets that publish cloud-cover metadata."
+                       FontSize="10" Opacity="0.6" TextWrapping="Wrap" Margin="0,-8,0,12" />
 
             <!-- Search Button -->
             <Button Content="Search"

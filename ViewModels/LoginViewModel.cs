@@ -1,4 +1,3 @@
-using System.Net.Http;
 using System.Windows.Controls;
 using System.Windows.Input;
 using ArcGIS.Desktop.Framework;
@@ -8,8 +7,7 @@ using eodh.Services;
 namespace eodh.ViewModels;
 
 /// <summary>
-/// ViewModel for the login/authentication view.
-/// Handles credential input and EODH API authentication.
+/// Handles single-workspace credential input and validation.
 /// </summary>
 internal class LoginViewModel : PropertyChangedBase
 {
@@ -31,33 +29,30 @@ internal class LoginViewModel : PropertyChangedBase
         _ = TryAutoLoginAsync();
     }
 
-    /// <summary>
-    /// Attempts to restore saved credentials and validate them.
-    /// If valid, skips the login form entirely.
-    /// </summary>
     private async Task TryAutoLoginAsync()
     {
-        if (!_authService.TryLoadSavedCredentials()) return;
+        if (!_authService.TryLoadSavedCredentials())
+            return;
 
         Username = _authService.Username ?? string.Empty;
         IsLoading = true;
         try
         {
             var stacClient = new StacClient(_authService);
-            var catalogs = await stacClient.GetCatalogsAsync();
-
-            if (catalogs.Count > 0)
-            {
-                _onLoginSuccess.Invoke();
-                return;
-            }
-
-            _authService.ClearCredentials();
+            await stacClient.ValidateCredentialsAsync();
+            _onLoginSuccess.Invoke();
         }
-        catch
+        catch (ApiException ex) when (ex.Category == ApiErrorCategory.Authentication)
         {
-            // Token expired or invalid — fall through to show login form
             _authService.ClearCredentials();
+            ErrorMessage = ex.Message;
+            HasError = true;
+        }
+        catch (Exception ex)
+        {
+            _authService.ClearCredentials();
+            ErrorMessage = $"Saved credentials could not be validated: {ex.Message}";
+            HasError = true;
         }
         finally
         {
@@ -65,12 +60,7 @@ internal class LoginViewModel : PropertyChangedBase
         }
     }
 
-    /// <summary>
-    /// Called from code-behind to provide the PasswordBox reference.
-    /// </summary>
-    public void SetPasswordBox(PasswordBox pb) => _passwordBox = pb;
-
-    #region Properties
+    public void SetPasswordBox(PasswordBox passwordBox) => _passwordBox = passwordBox;
 
     public string Username
     {
@@ -114,44 +104,30 @@ internal class LoginViewModel : PropertyChangedBase
 
     public ICommand LoginCommand { get; }
 
-    #endregion
-
-    #region Commands
-
     private bool CanLogin() => !string.IsNullOrWhiteSpace(Username) && !IsLoading;
 
     private async void ExecuteLogin()
     {
-        var apiToken = _passwordBox?.Password;
-        if (string.IsNullOrWhiteSpace(apiToken))
+        var apiKey = _passwordBox?.Password;
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
-            ErrorMessage = "Please enter your API token.";
+            ErrorMessage = "Please enter your workspace API key (not the Token ID).";
             HasError = true;
             return;
         }
 
         IsLoading = true;
         HasError = false;
-
         try
         {
-            _authService.SetCredentials(Username.Trim(), apiToken.Trim(), SelectedEnvironment);
-
+            _authService.SetCredentials(Username.Trim(), apiKey.Trim(), SelectedEnvironment);
             var stacClient = new StacClient(_authService);
-            var catalogs = await stacClient.GetCatalogsAsync();
-
-            if (catalogs.Count == 0)
-            {
-                ErrorMessage = "Connected but no catalogs found. Check your credentials.";
-                HasError = true;
-                return;
-            }
-
+            await stacClient.ValidateCredentialsAsync();
             _onLoginSuccess.Invoke();
         }
-        catch (HttpRequestException ex)
+        catch (ApiException ex)
         {
-            ErrorMessage = $"Authentication failed: {ex.Message}";
+            ErrorMessage = ex.Message;
             HasError = true;
             _authService.ClearCredentials();
         }
@@ -166,6 +142,4 @@ internal class LoginViewModel : PropertyChangedBase
             IsLoading = false;
         }
     }
-
-    #endregion
 }

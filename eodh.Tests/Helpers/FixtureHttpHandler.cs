@@ -13,6 +13,7 @@ public class FixtureHttpHandler : HttpMessageHandler
 {
     private readonly List<(string UrlPattern, HttpStatusCode Status, string Content)> _responses = [];
     private readonly Dictionary<string, Dictionary<string, string>> _headerMap = [];
+    public List<CapturedRequest> Requests { get; } = [];
 
     /// <summary>
     /// Register a fixture file to be returned when the request URL contains the given pattern.
@@ -52,12 +53,16 @@ public class FixtureHttpHandler : HttpMessageHandler
             _headerMap[urlContains] = headers;
     }
 
-    protected override Task<HttpResponseMessage> SendAsync(
+    protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var url = request.RequestUri?.ToString() ?? "";
+        var body = request.Content == null
+            ? null
+            : await request.Content.ReadAsStringAsync(cancellationToken);
+        Requests.Add(new CapturedRequest(request.Method, url, body));
 
         foreach (var (pattern, status, content) in _responses)
         {
@@ -71,15 +76,17 @@ public class FixtureHttpHandler : HttpMessageHandler
                 if (_headerMap.TryGetValue(pattern, out var headers))
                     foreach (var (key, val) in headers)
                         response.Headers.TryAddWithoutValidation(key, val);
-                return Task.FromResult(response);
+                return response;
             }
         }
 
         // No match — return 404
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)
+        return new HttpResponseMessage(HttpStatusCode.NotFound)
         {
             Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json"),
             RequestMessage = request
-        });
+        };
     }
 }
+
+public sealed record CapturedRequest(HttpMethod Method, string Url, string? Body);

@@ -60,7 +60,7 @@ public class SearchFilters
                 ["op"] = "<=",
                 ["args"] = new object[]
                 {
-                    new Dictionary<string, string> { ["property"] = "eo:cloud_cover" },
+                    new Dictionary<string, string> { ["property"] = "properties.eo:cloud_cover" },
                     MaxCloudCover.Value
                 }
             };

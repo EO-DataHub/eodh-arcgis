@@ -6,8 +6,7 @@ using eodh.Models;
 namespace eodh.Services;
 
 /// <summary>
-/// HTTP client for the EODH STAC API.
-/// Replaces pyeodh — makes direct REST calls to STAC endpoints.
+/// Link-driven HTTP client for the EODH STAC API.
 /// </summary>
 public class StacClient
 {
@@ -24,178 +23,294 @@ public class StacClient
         _authService = authService;
     }
 
+    public IReadOnlyList<CatalogRoot> CatalogRoots => CatalogRoot.All;
+
     /// <summary>
-    /// List available STAC catalogs.
-    /// EODH endpoint: GET /api/catalogue/stac/catalogs
+    /// Validate the current bearer credential against a curated STAC root
+    /// without traversing the entire catalogue tree.
     /// </summary>
-    public async Task<List<StacCatalog>> GetCatalogsAsync(CancellationToken ct = default)
+    public async Task ValidateCredentialsAsync(CancellationToken ct = default)
     {
         using var client = _authService.CreateHttpClient();
-        var all = new List<StacCatalog>();
-        string? url = "/api/catalogue/stac/catalogs";
-
-        while (url != null)
-        {
-            var response = await client.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync(ct);
-            var result = JsonSerializer.Deserialize<StacCatalogList>(json, JsonOptions);
-
-            if (result?.Catalogs != null)
-                all.AddRange(result.Catalogs);
-
-            url = GetLinkHref(result?.Links, "next");
-        }
-
-        return all;
+        using var response = await client.GetAsync(CatalogRoot.Public.Path, ct);
+        await ApiResponse.EnsureSuccessAsync(response, "authentication", ct);
     }
 
     /// <summary>
-    /// List collections within a catalog.
-    /// Uses the catalog's own "data" or "collections" link to handle nested catalogs.
+    /// Recursively discover all collections below one curated root. Traversal
+    /// follows advertised links, handles pagination, and tolerates cycles.
     /// </summary>
-    public async Task<List<StacCollection>> GetCollectionsAsync(
-        StacCatalog catalog, CancellationToken ct = default)
+    public async Task<List<CatalogCollectionEntry>> DiscoverCollectionsAsync(
+        CatalogRoot root,
+        CancellationToken ct = default)
     {
-        string? url = GetLinkHref(catalog.Links, "data")
-                   ?? GetLinkHref(catalog.Links, "collections")
-                   ?? $"{_authService.BaseUrl}/api/catalogue/stac/catalogs/{catalog.Id}/collections";
-
         using var client = _authService.CreateHttpClient();
-        var all = new List<StacCollection>();
+        var pending = new Queue<TraversalRequest>();
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var entries = new Dictionary<string, CatalogCollectionEntry>(StringComparer.OrdinalIgnoreCase);
 
-        while (url != null)
+        var rootUri = ResolveUrl(root.Path, new Uri(_authService.BaseUrl));
+        pending.Enqueue(new TraversalRequest(
+            rootUri,
+            new TraversalContext(root.DisplayName, rootUri.ToString(), null)));
+
+        while (pending.Count > 0)
         {
-            var response = await client.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
+            ct.ThrowIfCancellationRequested();
+            var request = pending.Dequeue();
+            var canonicalUrl = Canonicalize(request.Url);
+            if (!visited.Add(canonicalUrl))
+                continue;
 
+            using var response = await client.GetAsync(request.Url, ct);
+            await ApiResponse.EnsureSuccessAsync(response, "catalogue discovery", ct);
             var json = await response.Content.ReadAsStringAsync(ct);
-            var result = JsonSerializer.Deserialize<StacCollectionList>(json, JsonOptions);
 
-            if (result?.Collections != null)
-                all.AddRange(result.Collections);
-
-            url = GetLinkHref(result?.Links, "next");
+            using var document = JsonDocument.Parse(json);
+            ProcessDocument(document.RootElement, request, root, pending, entries);
         }
 
-        return all;
+        return entries.Values
+            .OrderBy(entry => entry.ProviderLabel, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entry => entry.Collection.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entry => entry.Identity, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     /// <summary>
-    /// Search STAC items with filters.
-    /// Uses the catalog's own "search" link to handle nested catalogs.
+    /// Search the owning catalogue for a flattened collection entry.
     /// </summary>
-    public async Task<StacSearchResult> SearchAsync(
-        StacCatalog catalog, SearchFilters filters, CancellationToken ct = default)
+    public Task<StacSearchResult> SearchAsync(
+        CatalogCollectionEntry entry,
+        SearchFilters filters,
+        CancellationToken ct = default) =>
+        SearchAtUrlAsync(entry.SearchUrl, filters, ct);
+
+    /// <summary>
+    /// Compatibility overload for callers that already hold a catalogue.
+    /// </summary>
+    public Task<StacSearchResult> SearchAsync(
+        StacCatalog catalog,
+        SearchFilters filters,
+        CancellationToken ct = default)
     {
         var searchUrl = GetLinkHref(catalog.Links, "search")
-                     ?? $"{_authService.BaseUrl}/api/catalogue/stac/catalogs/{catalog.Id}/search";
+            ?? $"{_authService.BaseUrl}/api/catalogue/stac/catalogs/{catalog.Id}/search";
+        return SearchAtUrlAsync(searchUrl, filters, ct);
+    }
 
+    private async Task<StacSearchResult> SearchAtUrlAsync(
+        string searchUrl,
+        SearchFilters filters,
+        CancellationToken ct)
+    {
         using var client = _authService.CreateHttpClient();
-
         var body = filters.ToSearchParams();
         var jsonBody = JsonSerializer.Serialize(body, JsonOptions);
-        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-
-        // Debug: store what we sent for diagnostics
-        LastSearchDebug = $"POST {searchUrl}\n{jsonBody}";
-
-        var response = await client.PostAsync(searchUrl, content, ct);
-        response.EnsureSuccessStatusCode();
+        using var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        using var response = await client.PostAsync(searchUrl, content, ct);
+        await ApiResponse.EnsureSuccessAsync(response, "item search", ct);
 
         var json = await response.Content.ReadAsStringAsync(ct);
-
-        // Debug: append raw response length and first 500 chars
-        LastSearchDebug += $"\n\nResponse ({json.Length} chars):\n{json[..Math.Min(json.Length, 500)]}";
-
         var itemCollection = JsonSerializer.Deserialize<StacItemCollection>(json, JsonOptions);
-
-        var items = itemCollection?.Features ?? [];
-        var totalCount = itemCollection?.Context?.Matched
-                         ?? itemCollection?.NumberMatched
-                         ?? items.Count;
-
-        var nextLink = itemCollection?.Links?.FirstOrDefault(l => l.Rel == "next")?.Href;
-
-        return new StacSearchResult(items, totalCount, nextLink);
+        return CreateSearchResult(itemCollection);
     }
 
-    /// <summary>
-    /// Debug info from the last search call. Temporary for diagnostics.
-    /// </summary>
-    public string? LastSearchDebug { get; private set; }
-
-    /// <summary>
-    /// Extract an href from a list of STAC links by rel type.
-    /// </summary>
-    private static string? GetLinkHref(List<StacLink>? links, string rel)
-    {
-        return links?.FirstOrDefault(l => l.Rel == rel)?.Href;
-    }
-
-    /// <summary>
-    /// Fetch the next page of search results.
-    /// </summary>
     public async Task<StacSearchResult> GetNextPageAsync(
-        string nextUrl, CancellationToken ct = default)
+        string nextUrl,
+        CancellationToken ct = default)
     {
         using var client = _authService.CreateHttpClient();
-        var response = await client.GetAsync(nextUrl, ct);
-        response.EnsureSuccessStatusCode();
-
+        using var response = await client.GetAsync(nextUrl, ct);
+        await ApiResponse.EnsureSuccessAsync(response, "search pagination", ct);
         var json = await response.Content.ReadAsStringAsync(ct);
-        var itemCollection = JsonSerializer.Deserialize<StacItemCollection>(json, JsonOptions);
-
-        var items = itemCollection?.Features ?? [];
-        var totalCount = itemCollection?.Context?.Matched
-                         ?? itemCollection?.NumberMatched
-                         ?? items.Count;
-        var nextLink = itemCollection?.Links?.FirstOrDefault(l => l.Rel == "next")?.Href;
-
-        return new StacSearchResult(items, totalCount, nextLink);
+        return CreateSearchResult(JsonSerializer.Deserialize<StacItemCollection>(json, JsonOptions));
     }
 
-    /// <summary>
-    /// Fetch a single STAC item by collection and item ID.
-    /// </summary>
     public async Task<StacItem?> GetItemAsync(
-        string catalogId, string collectionId, string itemId, CancellationToken ct = default)
+        string catalogId,
+        string collectionId,
+        string itemId,
+        CancellationToken ct = default)
     {
         using var client = _authService.CreateHttpClient();
-        var response = await client.GetAsync(
+        using var response = await client.GetAsync(
             $"/api/catalogue/stac/catalogs/{catalogId}/collections/{collectionId}/items/{itemId}", ct);
 
-        if (!response.IsSuccessStatusCode) return null;
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
 
+        await ApiResponse.EnsureSuccessAsync(response, "item retrieval", ct);
         var json = await response.Content.ReadAsStringAsync(ct);
         return JsonSerializer.Deserialize<StacItem>(json, JsonOptions);
     }
 
-    #region Internal response types
+    private void ProcessDocument(
+        JsonElement document,
+        TraversalRequest request,
+        CatalogRoot root,
+        Queue<TraversalRequest> pending,
+        Dictionary<string, CatalogCollectionEntry> entries)
+    {
+        if (document.TryGetProperty("collections", out var collections) &&
+            collections.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var element in collections.EnumerateArray())
+                AddCollection(element, request.Context, request.Url, root, entries);
 
-    private record StacCatalogList(
-        [property: System.Text.Json.Serialization.JsonPropertyName("catalogs")]
-        List<StacCatalog>? Catalogs,
-        [property: System.Text.Json.Serialization.JsonPropertyName("links")]
-        List<StacLink>? Links
-    );
+            EnqueueLinks(document, request, pending, ["next"]);
+            return;
+        }
 
-    private record StacCollectionList(
-        [property: System.Text.Json.Serialization.JsonPropertyName("collections")]
-        List<StacCollection>? Collections,
-        [property: System.Text.Json.Serialization.JsonPropertyName("links")]
-        List<StacLink>? Links
-    );
+        if (document.TryGetProperty("catalogs", out var catalogs) &&
+            catalogs.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var element in catalogs.EnumerateArray())
+                ProcessCatalog(element, request, pending);
 
-    #endregion
+            EnqueueLinks(document, request, pending, ["next"]);
+            return;
+        }
+
+        var type = document.TryGetProperty("type", out var typeValue)
+            ? typeValue.GetString()
+            : null;
+
+        if (string.Equals(type, "Collection", StringComparison.OrdinalIgnoreCase))
+        {
+            AddCollection(document, request.Context, request.Url, root, entries);
+            return;
+        }
+
+        ProcessCatalog(document, request, pending);
+    }
+
+    private void ProcessCatalog(
+        JsonElement element,
+        TraversalRequest request,
+        Queue<TraversalRequest> pending)
+    {
+        var catalog = element.Deserialize<StacCatalog>(JsonOptions);
+        if (catalog == null)
+            return;
+
+        var selfUrl = GetLinkHref(catalog.Links, "self");
+        var catalogueUri = selfUrl == null
+            ? request.Url
+            : ResolveUrl(selfUrl, request.Url);
+        var providerLabel = !string.IsNullOrWhiteSpace(catalog.Title)
+            ? catalog.Title!
+            : !string.IsNullOrWhiteSpace(catalog.Id)
+                ? catalog.Id
+                : request.Context.ProviderLabel;
+        var searchHref = GetLinkHref(catalog.Links, "search");
+        var searchUrl = searchHref == null
+            ? request.Context.SearchUrl
+            : ResolveUrl(searchHref, catalogueUri).ToString();
+        var context = new TraversalContext(
+            providerLabel,
+            catalogueUri.ToString(),
+            searchUrl);
+
+        if (catalog.Links == null)
+            return;
+
+        foreach (var link in catalog.Links)
+        {
+            if (link.Rel is not ("child" or "catalog" or "catalogs" or "data" or "collections" or "next"))
+                continue;
+
+            var linkUri = ResolveUrl(link.Href, catalogueUri);
+            pending.Enqueue(new TraversalRequest(linkUri, context));
+        }
+    }
+
+    private void AddCollection(
+        JsonElement element,
+        TraversalContext context,
+        Uri sourceUri,
+        CatalogRoot root,
+        Dictionary<string, CatalogCollectionEntry> entries)
+    {
+        var collection = element.Deserialize<StacCollection>(JsonOptions);
+        if (collection == null || string.IsNullOrWhiteSpace(collection.Id))
+            return;
+
+        var parentHref = GetLinkHref(collection.Links, "parent");
+        var catalogueUrl = parentHref == null
+            ? context.CatalogueUrl
+            : ResolveUrl(parentHref, sourceUri).ToString();
+        var searchUrl = context.SearchUrl ?? $"{catalogueUrl.TrimEnd('/')}/search";
+        var entry = new CatalogCollectionEntry(
+            root,
+            context.ProviderLabel,
+            Canonicalize(new Uri(catalogueUrl)),
+            searchUrl,
+            collection);
+
+        entries.TryAdd(entry.Identity, entry);
+    }
+
+    private static void EnqueueLinks(
+        JsonElement document,
+        TraversalRequest request,
+        Queue<TraversalRequest> pending,
+        IReadOnlyCollection<string> rels)
+    {
+        if (!document.TryGetProperty("links", out var links) || links.ValueKind != JsonValueKind.Array)
+            return;
+
+        foreach (var link in links.EnumerateArray())
+        {
+            if (!link.TryGetProperty("rel", out var relValue) ||
+                !rels.Contains(relValue.GetString() ?? string.Empty) ||
+                !link.TryGetProperty("href", out var hrefValue) ||
+                string.IsNullOrWhiteSpace(hrefValue.GetString()))
+                continue;
+
+            pending.Enqueue(new TraversalRequest(
+                ResolveUrl(hrefValue.GetString()!, request.Url),
+                request.Context));
+        }
+    }
+
+    private static StacSearchResult CreateSearchResult(StacItemCollection? itemCollection)
+    {
+        var items = itemCollection?.Features ?? [];
+        var totalCount = itemCollection?.Context?.Matched
+            ?? itemCollection?.NumberMatched
+            ?? items.Count;
+        var nextLink = itemCollection?.Links?.FirstOrDefault(link => link.Rel == "next")?.Href;
+        return new StacSearchResult(items, totalCount, nextLink);
+    }
+
+    private static string? GetLinkHref(List<StacLink>? links, string rel) =>
+        links?.FirstOrDefault(link =>
+            string.Equals(link.Rel, rel, StringComparison.OrdinalIgnoreCase))?.Href;
+
+    private static Uri ResolveUrl(string href, Uri relativeTo)
+    {
+        if (Uri.TryCreate(href, UriKind.Absolute, out var absolute))
+            return absolute;
+
+        return new Uri(relativeTo, href);
+    }
+
+    private static string Canonicalize(Uri uri)
+    {
+        var builder = new UriBuilder(uri) { Fragment = string.Empty };
+        return builder.Uri.AbsoluteUri.TrimEnd('/');
+    }
+
+    private sealed record TraversalContext(
+        string ProviderLabel,
+        string CatalogueUrl,
+        string? SearchUrl);
+
+    private sealed record TraversalRequest(Uri Url, TraversalContext Context);
 }
 
-/// <summary>
-/// Result of a STAC search operation, including pagination info.
-/// </summary>
 public record StacSearchResult(
     List<StacItem> Items,
     int TotalCount,
-    string? NextPageUrl
-);
+    string? NextPageUrl);

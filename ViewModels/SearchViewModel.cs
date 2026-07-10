@@ -25,8 +25,8 @@ internal class SearchViewModel : PropertyChangedBase
     private readonly StacClient _stacClient;
     private readonly Action<List<StacItem>> _onSearchCompleted;
 
-    private StacCatalog? _selectedCatalog;
-    private StacCollection? _selectedCollection;
+    private CatalogRoot? _selectedCatalog;
+    private CatalogCollectionEntry? _selectedCollection;
     private DateTime? _startDate;
     private DateTime? _endDate;
     private double _maxCloudCover = 100;
@@ -34,6 +34,7 @@ internal class SearchViewModel : PropertyChangedBase
     private IDisposable? _aoiOverlay;
     private string _aoiDescription = "No area selected";
     private bool _isSearching;
+    private bool _isLoadingCollections;
     private string _resultSummary = string.Empty;
 
     public SearchViewModel(StacClient stacClient, Action<List<StacItem>> onSearchCompleted)
@@ -51,14 +52,17 @@ internal class SearchViewModel : PropertyChangedBase
         ClearAoiCommand = new RelayCommand(ExecuteClearAoi, CanClearAoi);
 
         AoiSketchHelper.AoiDrawn += SetAoiFromPolygon;
+
+        foreach (var root in _stacClient.CatalogRoots)
+            Catalogs.Add(root);
     }
 
     #region Properties
 
-    public ObservableCollection<StacCatalog> Catalogs { get; } = [];
-    public ObservableCollection<StacCollection> Collections { get; } = [];
+    public ObservableCollection<CatalogRoot> Catalogs { get; } = [];
+    public ObservableCollection<CatalogCollectionEntry> Collections { get; } = [];
 
-    public StacCatalog? SelectedCatalog
+    public CatalogRoot? SelectedCatalog
     {
         get => _selectedCatalog;
         set
@@ -68,10 +72,14 @@ internal class SearchViewModel : PropertyChangedBase
         }
     }
 
-    public StacCollection? SelectedCollection
+    public CatalogCollectionEntry? SelectedCollection
     {
         get => _selectedCollection;
-        set => SetProperty(ref _selectedCollection, value);
+        set
+        {
+            if (SetProperty(ref _selectedCollection, value))
+                NotifyCanSearchChanged();
+        }
     }
 
     public DateTime? StartDate
@@ -108,6 +116,16 @@ internal class SearchViewModel : PropertyChangedBase
         }
     }
 
+    public bool IsLoadingCollections
+    {
+        get => _isLoadingCollections;
+        set
+        {
+            SetProperty(ref _isLoadingCollections, value);
+            NotifyCanSearchChanged();
+        }
+    }
+
     public string ResultSummary
     {
         get => _resultSummary;
@@ -128,20 +146,14 @@ internal class SearchViewModel : PropertyChangedBase
 
     public async Task LoadCatalogsAsync()
     {
-        try
-        {
-            var catalogs = await _stacClient.GetCatalogsAsync();
-            Catalogs.Clear();
-            foreach (var cat in catalogs)
-                Catalogs.Add(cat);
+        Catalogs.Clear();
+        foreach (var root in _stacClient.CatalogRoots)
+            Catalogs.Add(root);
 
-            if (Catalogs.Count > 0)
-                SelectedCatalog = Catalogs[0];
-        }
-        catch (Exception ex)
-        {
-            ResultSummary = $"Failed to load catalogs: {ex.Message}";
-        }
+        if (Catalogs.Count > 0)
+            SelectedCatalog = Catalogs[0];
+
+        await Task.CompletedTask;
     }
 
     /// <summary>
@@ -210,25 +222,40 @@ internal class SearchViewModel : PropertyChangedBase
     {
         if (SelectedCatalog == null) return;
 
-        ResultSummary = $"Loading collections for '{SelectedCatalog.Id}'...";
+        var selectedRoot = SelectedCatalog;
+        IsLoadingCollections = true;
+        ResultSummary = $"Loading {selectedRoot.DisplayName} collections...";
+        Collections.Clear();
+        SelectedCollection = null;
 
         try
         {
-            var collections = await _stacClient.GetCollectionsAsync(SelectedCatalog);
-            Collections.Clear();
+            var collections = await _stacClient.DiscoverCollectionsAsync(selectedRoot);
+            if (SelectedCatalog != selectedRoot)
+                return;
+
             foreach (var col in collections)
                 Collections.Add(col);
             if (Collections.Count > 0)
                 SelectedCollection = Collections[0];
-            ResultSummary = $"Loaded {collections.Count} collections for '{SelectedCatalog.Id}'";
+            ResultSummary = collections.Count == 0
+                ? $"No collections are available under {selectedRoot.DisplayName}."
+                : $"Loaded {collections.Count} {selectedRoot.DisplayName} collections.";
         }
         catch (Exception ex)
         {
-            ResultSummary = $"Failed to load collections: {ex.GetType().Name}: {ex.Message}";
+            if (SelectedCatalog == selectedRoot)
+                ResultSummary = $"Failed to load {selectedRoot.DisplayName} collections: {ex.Message}";
+        }
+        finally
+        {
+            if (SelectedCatalog == selectedRoot)
+                IsLoadingCollections = false;
         }
     }
 
-    private bool CanSearch() => !IsSearching && _aoiBbox != null;
+    private bool CanSearch() =>
+        !IsSearching && !IsLoadingCollections && _aoiBbox != null && SelectedCollection != null;
 
     private bool CanClearAoi() => _aoiBbox != null;
 
@@ -267,7 +294,7 @@ internal class SearchViewModel : PropertyChangedBase
 
     private async void ExecuteSearch()
     {
-        if (SelectedCatalog == null || _aoiBbox == null) return;
+        if (SelectedCollection == null || _aoiBbox == null) return;
 
         IsSearching = true;
         ResultSummary = "Searching...";
@@ -279,15 +306,15 @@ internal class SearchViewModel : PropertyChangedBase
                 Bbox = _aoiBbox,
                 StartDate = StartDate.HasValue ? new DateTimeOffset(StartDate.Value) : null,
                 EndDate = EndDate.HasValue ? new DateTimeOffset(EndDate.Value) : null,
-                Collections = SelectedCollection != null ? [SelectedCollection.Id] : [],
+                Collections = [SelectedCollection.Collection.Id],
                 MaxCloudCover = MaxCloudCover < 100 ? MaxCloudCover : null,
                 Limit = 50
             };
 
             CurrentFilters = filters;
-            var result = await _stacClient.SearchAsync(SelectedCatalog, filters);
+            var result = await _stacClient.SearchAsync(SelectedCollection, filters);
 
-            ResultSummary = $"Found {result.TotalCount} items ({result.Items.Count} shown)\n\nDEBUG:\n{_stacClient.LastSearchDebug}";
+            ResultSummary = $"Found {result.TotalCount} items ({result.Items.Count} shown).";
             _onSearchCompleted.Invoke(result.Items);
         }
         catch (Exception ex)

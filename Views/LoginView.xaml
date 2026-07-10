@@ -17,7 +17,7 @@
                        HorizontalAlignment="Center"
                        Margin="0,0,0,8" />
 
-            <TextBlock Text="Sign in with your EODH credentials to search and access satellite imagery."
+            <TextBlock Text="Sign in with your EODH workspace credentials to search and access satellite imagery."
                        TextWrapping="Wrap"
                        HorizontalAlignment="Center"
                        Margin="0,0,0,24"
@@ -30,14 +30,20 @@
                       Margin="0,0,0,12" />
 
             <!-- Workspace Name -->
-            <TextBlock Text="Workspace Name" Margin="0,0,0,4" />
+            <TextBlock Text="Workspace name" Margin="0,0,0,4" />
             <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
                      Margin="0,0,0,12" />
 
-            <!-- API Token -->
-            <TextBlock Text="API Token" Margin="0,0,0,4" />
+            <!-- Workspace API key -->
+            <TextBlock Text="Workspace API key" Margin="0,0,0,4" />
             <PasswordBox x:Name="ApiTokenBox"
-                         Margin="0,0,0,16" />
+                         Margin="0,0,0,4" />
+            <TextBlock Text="Paste the API Key, not the Token ID."
+                       FontSize="11" Opacity="0.7" Margin="0,0,0,4" />
+            <TextBlock FontSize="11" Margin="0,0,0,16">
+                <Hyperlink NavigateUri="https://docs.eodatahub.org.uk/Getting-Started/workspaces/workspace-credentials/"
+                           RequestNavigate="CredentialsLink_RequestNavigate">Open EODH workspace credentials</Hyperlink>
+            </TextBlock>
 
             <!-- Error message -->
             <TextBlock Text="{Binding ErrorMessage}"

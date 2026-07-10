@@ -116,6 +116,10 @@ public class SearchFiltersTests
 
         var filter = (Dictionary<string, object>)result["filter"];
         Assert.Equal("<=", filter["op"]);
+        var args = (object[])filter["args"];
+        var property = (Dictionary<string, string>)args[0];
+        Assert.Equal("properties.eo:cloud_cover", property["property"]);
+        Assert.Equal(30.0, (double)args[1]);
     }
 
     [Fact]

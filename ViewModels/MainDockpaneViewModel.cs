@@ -130,7 +130,7 @@ internal class MainDockpaneViewModel : DockPane
 
     private void OnSearchCompleted(List<Models.StacItem> results)
     {
-        ResultsVM.LoadResults(results, SearchVM.CurrentFilters, SearchVM.SelectedCollection?.License);
+        ResultsVM.LoadResults(results, SearchVM.CurrentFilters, SearchVM.SelectedCollection?.Collection.License);
         TimelineVM.LoadResults(results);
         SelectedTabIndex = 1;
     }

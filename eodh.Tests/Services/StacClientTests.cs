@@ -1,217 +1,145 @@
-using System.IO;
 using System.Net;
-using Xunit;
+using System.Net.Http;
 using eodh.Models;
 using eodh.Services;
 using eodh.Tests.Helpers;
+using Xunit;
 
 namespace eodh.Tests.Services;
 
-/// <summary>
-/// Req 2: Search & Filtering — validates StacClient correctly queries EODH STAC APIs,
-/// handles pagination, and deserializes catalog/collection/item responses.
-/// Uses recorded API fixtures replayed through FixtureHttpHandler.
-/// </summary>
 public class StacClientTests
 {
-    private static string FixturePath(string name) =>
-        Path.Combine(AppContext.BaseDirectory, "Fixtures", name);
-
     private static (StacClient client, FixtureHttpHandler handler) CreateClient()
     {
         var handler = new FixtureHttpHandler();
-        var auth = new TestAuthService(handler);
-        return (new StacClient(auth), handler);
+        return (new StacClient(new TestAuthService(handler)), handler);
     }
 
-    // Helper: a catalog with data + search links matching the real CEDA catalogue
     private static StacCatalog CedaCatalog() => new(
         "ceda-stac-catalogue",
-        "CEDA STAC Catalogue",
-        "Public CEDA datasets",
-        [
-            new StacLink("data",
-                "https://eodatahub.org.uk/api/catalogue/stac/catalogs/public/catalogs/ceda-stac-catalogue/collections",
-                "application/json", null),
-            new StacLink("search",
-                "https://eodatahub.org.uk/api/catalogue/stac/catalogs/public/catalogs/ceda-stac-catalogue/search",
-                "application/geo+json", "STAC search")
-        ]
-    );
+        "CEDA",
+        null,
+        [new StacLink("search", "https://eodatahub.org.uk/ceda/search", null, null)]);
 
     [Fact]
-    public async Task GetCatalogsAsync_ReturnsDeserializedCatalogs()
+    public void CatalogRoots_ContainsOnlyPublicAndCommercial()
     {
-        var (client, handler) = CreateClient();
-        // catalogs.json has a "next" link — register empty page2 so pagination terminates
-        handler.RegisterJson("token=processing-results", """{"catalogs":[],"links":[]}""");
-        handler.Register("/api/catalogue/stac/catalogs", FixturePath("catalogs.json"));
+        var (client, _) = CreateClient();
 
-        var catalogs = await client.GetCatalogsAsync();
-
-        Assert.NotNull(catalogs);
-        Assert.NotEmpty(catalogs);
-        Assert.Contains(catalogs, c => c.Id == "airbus");
+        Assert.Collection(client.CatalogRoots,
+            root => Assert.Equal("Public", root.DisplayName),
+            root => Assert.Equal("Commercial", root.DisplayName));
     }
 
     [Fact]
-    public async Task GetCatalogsAsync_FollowsPagination_ReturnsAllCatalogs()
+    public async Task DiscoverCollectionsAsync_RecursesPagesPreventsCyclesAndKeepsDuplicateIds()
     {
         var (client, handler) = CreateClient();
-        handler.Register("/api/catalogue/stac/catalogs?token=page2", FixturePath("catalogs_page2.json"));
-        handler.Register("/api/catalogue/stac/catalogs", FixturePath("catalogs_page1.json"));
+        handler.RegisterJson("/providers/zeta/collections?page=2", """
+            {"collections":[{"id":"z-other","title":"Other","links":[{"rel":"parent","href":"/providers/zeta"}]}],"links":[]}
+            """);
+        handler.RegisterJson("/providers/zeta/collections", """
+            {"collections":[{"id":"shared","title":"Bravo","links":[{"rel":"parent","href":"/providers/zeta"}]}],
+             "links":[{"rel":"next","href":"?page=2"}]}
+            """);
+        handler.RegisterJson("/providers/alpha/collections", """
+            {"collections":[{"id":"shared","title":"Alpha collection","links":[{"rel":"parent","href":"/providers/alpha"}]}],"links":[]}
+            """);
+        handler.RegisterJson("/providers/zeta", """
+            {"id":"zeta","title":"Zeta","type":"Catalog","links":[
+              {"rel":"self","href":"/providers/zeta"},{"rel":"search","href":"/providers/zeta/search"},
+              {"rel":"data","href":"/providers/zeta/collections"},
+              {"rel":"child","href":"/api/catalogue/stac/catalogs/public"}]}
+            """);
+        handler.RegisterJson("/providers/alpha", """
+            {"id":"alpha","title":"Alpha","type":"Catalog","links":[
+              {"rel":"self","href":"/providers/alpha"},{"rel":"search","href":"/providers/alpha/search"},
+              {"rel":"collections","href":"/providers/alpha/collections"}]}
+            """);
+        handler.RegisterJson("/api/catalogue/stac/catalogs/public", """
+            {"id":"public","title":"Public","type":"Catalog","links":[
+              {"rel":"self","href":"/api/catalogue/stac/catalogs/public"},
+              {"rel":"child","href":"/providers/zeta"},{"rel":"child","href":"/providers/alpha"}]}
+            """);
 
-        var catalogs = await client.GetCatalogsAsync();
+        var entries = await client.DiscoverCollectionsAsync(CatalogRoot.Public);
 
-        Assert.Equal(3, catalogs.Count);
-        Assert.Contains(catalogs, c => c.Id == "airbus");
-        Assert.Contains(catalogs, c => c.Id == "ceda");
-        Assert.Contains(catalogs, c => c.Id == "copernicus");
+        Assert.Equal(3, entries.Count);
+        Assert.Equal(["Alpha", "Zeta", "Zeta"], entries.Select(entry => entry.ProviderLabel));
+        Assert.Equal(2, entries.Count(entry => entry.Collection.Id == "shared"));
+        Assert.Equal(1, handler.Requests.Count(request =>
+            request.Url.EndsWith("/api/catalogue/stac/catalogs/public", StringComparison.OrdinalIgnoreCase)));
+        Assert.All(entries, entry => Assert.DoesNotContain("/catalogs/user/", entry.CatalogueUrl));
     }
 
     [Fact]
-    public async Task GetCollectionsAsync_FollowsPagination_ReturnsAllCollections()
+    public async Task SearchAsync_UsesSelectedEntriesAdvertisedSearchUrl()
     {
         var (client, handler) = CreateClient();
-        handler.Register("token=page2", FixturePath("collections_page2.json"));
-        handler.Register("/collections", FixturePath("collections_page1.json"));
+        handler.RegisterJson("/provider/search", """
+            {"type":"FeatureCollection","features":[],"links":[],"numMatched":0}
+            """);
+        var collection = new StacCollection("duplicate", "Chosen", null, null, null, null, null);
+        var entry = new CatalogCollectionEntry(
+            CatalogRoot.Commercial, "Provider", "https://eodatahub.org.uk/provider",
+            "https://eodatahub.org.uk/provider/search", collection);
 
-        var collections = await client.GetCollectionsAsync(CedaCatalog());
+        await client.SearchAsync(entry, new SearchFilters { Collections = ["duplicate"] });
 
-        Assert.Equal(3, collections.Count);
-        Assert.Contains(collections, c => c.Id == "sentinel2_ard");
-        Assert.Contains(collections, c => c.Id == "sentinel1_ard");
-        Assert.Contains(collections, c => c.Id == "ukcp");
-    }
-
-    [Fact]
-    public async Task GetCatalogsAsync_ReturnsEmptyList_WhenNoCatalogs()
-    {
-        var (client, handler) = CreateClient();
-        handler.Register("/api/catalogue/stac/catalogs", FixturePath("catalogs_empty.json"));
-
-        var catalogs = await client.GetCatalogsAsync();
-
-        Assert.NotNull(catalogs);
-        Assert.Empty(catalogs);
-    }
-
-    [Fact]
-    public async Task GetCollectionsAsync_UsesDataLink_WhenPresent()
-    {
-        var (client, handler) = CreateClient();
-        // collections.json has a "next" link — register empty page2 so pagination terminates
-        handler.RegisterJson("token=", """{"collections":[],"links":[]}""");
-        handler.Register("/collections", FixturePath("collections.json"));
-
-        var collections = await client.GetCollectionsAsync(CedaCatalog());
-
-        Assert.NotNull(collections);
-        Assert.NotEmpty(collections);
-        // Real recorded data includes these collections
-        Assert.Contains(collections, c => c.Id == "sentinel2_ard");
-        Assert.Contains(collections, c => c.Id == "ukcp");
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Equal("https://eodatahub.org.uk/provider/search", request.Url);
     }
 
     [Fact]
     public async Task SearchAsync_ReturnsItemsAndTotalCount()
     {
         var (client, handler) = CreateClient();
-        handler.Register("/search", FixturePath("search_results.json"));
+        handler.RegisterJson("/ceda/search", """
+            {"type":"FeatureCollection","features":[],"links":[],"context":{"matched":12}}
+            """);
 
-        var filters = new SearchFilters
-        {
-            Collections = ["sentinel2_ard"],
-            Bbox = [-1.5, 51.0, 0.5, 52.0],
-            Limit = 2
-        };
+        var result = await client.SearchAsync(CedaCatalog(), new SearchFilters());
 
-        var result = await client.SearchAsync(CedaCatalog(), filters);
-
-        Assert.NotNull(result);
-        Assert.Equal(2, result.Items.Count);
-        Assert.Equal(6298, result.TotalCount);
+        Assert.Equal(12, result.TotalCount);
+        Assert.Empty(result.Items);
     }
 
     [Fact]
-    public async Task SearchAsync_ExtractsNextPageUrl()
+    public async Task GetNextPageAsync_ExtractsNextPage()
     {
         var (client, handler) = CreateClient();
-        handler.Register("/search", FixturePath("search_results.json"));
+        handler.RegisterJson("page=2", """
+            {"type":"FeatureCollection","features":[],"links":[{"rel":"next","href":"https://example.test/page=3"}]}
+            """);
 
-        var filters = new SearchFilters
-        {
-            Collections = ["sentinel2_ard"],
-            Bbox = [-1.5, 51.0, 0.5, 52.0],
-            Limit = 2
-        };
+        var result = await client.GetNextPageAsync("https://eodatahub.org.uk/search?page=2");
 
-        var result = await client.SearchAsync(CedaCatalog(), filters);
-
-        // Real recorded response has a "next" link for pagination
-        Assert.NotNull(result.NextPageUrl);
+        Assert.Equal("https://example.test/page=3", result.NextPageUrl);
     }
 
     [Fact]
-    public async Task SearchAsync_DeserializesItemProperties()
+    public async Task GetItemAsync_ReturnsNullOnlyForNotFound()
     {
         var (client, handler) = CreateClient();
-        handler.Register("/search", FixturePath("search_results.json"));
+        handler.RegisterStatus("missing", HttpStatusCode.NotFound);
 
-        var filters = new SearchFilters
-        {
-            Collections = ["sentinel2_ard"],
-            Limit = 2
-        };
-
-        var result = await client.SearchAsync(CedaCatalog(), filters);
-
-        var item = result.Items[0];
-        Assert.Equal("sentinel2_ard", item.Collection);
-        Assert.NotNull(item.Properties?.DateTime);
-        Assert.Equal("2026-02-16T11:00:29Z", item.Properties!.DateTime);
-        Assert.NotNull(item.Assets);
-        Assert.True(item.Assets!.ContainsKey("cog"));
-        Assert.True(item.Assets!.ContainsKey("thumbnail"));
-    }
-
-    [Fact]
-    public async Task GetNextPageAsync_FetchesNextPageUrl()
-    {
-        var (client, handler) = CreateClient();
-        handler.Register("/search", FixturePath("search_results_page2.json"));
-
-        var result = await client.GetNextPageAsync(
-            "https://eodatahub.org.uk/api/catalogue/stac/catalogs/public/catalogs/ceda-stac-catalogue/search?page=2");
-
-        Assert.NotNull(result);
-        Assert.NotEmpty(result.Items);
-    }
-
-    [Fact]
-    public async Task GetItemAsync_ReturnsItem_WhenFound()
-    {
-        var (client, handler) = CreateClient();
-        handler.Register("/items/", FixturePath("item.json"));
-
-        var item = await client.GetItemAsync(
-            "public/catalogs/ceda-stac-catalogue", "sentinel2_ard",
-            "neodc.sentinel_ard.data.sentinel_2.2026.02.19.S2A_20260219_latn510lonw0036_T30UVB_ORB137_20260219144647_utm30n_osgb");
-
-        Assert.NotNull(item);
-        Assert.Contains("sentinel_ard", item.Id);
-        Assert.Equal("sentinel2_ard", item.Collection);
-        Assert.NotNull(item.SelfLink);
-    }
-
-    [Fact]
-    public async Task GetItemAsync_ReturnsNull_WhenNotFound()
-    {
-        var (client, _) = CreateClient();
-        // No fixtures registered — handler returns 404 by default
-
-        var item = await client.GetItemAsync("any", "any", "nonexistent-item-id");
+        var item = await client.GetItemAsync("catalog", "collection", "missing");
 
         Assert.Null(item);
+    }
+
+    [Fact]
+    public async Task ValidateCredentialsAsync_TranslatesUnauthorizedResponse()
+    {
+        var (client, handler) = CreateClient();
+        handler.RegisterJson("/api/catalogue/stac/catalogs/public",
+            "{\"detail\":\"secret-value-must-not-be-used\"}", HttpStatusCode.Unauthorized);
+
+        var error = await Assert.ThrowsAsync<ApiException>(() => client.ValidateCredentialsAsync());
+
+        Assert.Equal(ApiErrorCategory.Authentication, error.Category);
+        Assert.Contains("invalid or expired", error.Message);
+        Assert.DoesNotContain("secret-value", error.Message);
     }
 }
