@@ -29,8 +29,8 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock VerticalAlignment="Center" Opacity="0.7" FontSize="11">
                     <Run Text="Signed in as " />
-                    <Run Text="{Binding LoggedInUsername}" FontWeight="SemiBold" />
-                    <Run Text=" (" /><Run Text="{Binding LoggedInEnvironment}" /><Run Text=")" />
+                    <Run Text="{Binding LoggedInUsername, Mode=OneWay}" FontWeight="SemiBold" />
+                    <Run Text=" (" /><Run Text="{Binding LoggedInEnvironment, Mode=OneWay}" /><Run Text=")" />
                 </TextBlock>
                 <Button Content="Sign Out"
                         Command="{Binding LogoutCommand}"

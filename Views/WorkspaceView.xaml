@@ -20,7 +20,7 @@
                 <TextBlock Text="Commercial data" FontWeight="SemiBold" FontSize="14" />
                 <TextBlock FontSize="10" Opacity="0.65">
                     <Run Text="Workspace: " />
-                    <Run Text="{Binding WorkspaceName}" FontWeight="SemiBold" />
+                    <Run Text="{Binding WorkspaceName, Mode=OneWay}" FontWeight="SemiBold" />
                 </TextBlock>
             </StackPanel>
             <Button Grid.Column="1" Content="Refresh"
@@ -80,9 +80,9 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock FontWeight="SemiBold" FontSize="11">
-                                        <Run Text="{Binding Provider}" />
+                                        <Run Text="{Binding Provider, Mode=OneWay}" />
                                         <Run Text=" — " />
-                                        <Run Text="{Binding Collection}" />
+                                        <Run Text="{Binding Collection, Mode=OneWay}" />
                                     </TextBlock>
                                     <TextBlock Text="{Binding ItemId}" FontSize="10"
                                                TextTrimming="CharacterEllipsis" Opacity="0.7" />
@@ -113,8 +113,8 @@
                                                       IsEnabled="{Binding IsLoadable}"
                                                       FontSize="10" Margin="0,1">
                                                 <TextBlock>
-                                                    <Run Text="{Binding DisplayName}" />
-                                                    <Run Text=" (" /><Run Text="{Binding FileType}" /><Run Text=")" />
+                                                    <Run Text="{Binding DisplayName, Mode=OneWay}" />
+                                                    <Run Text=" (" /><Run Text="{Binding FileType, Mode=OneWay}" /><Run Text=")" />
                                                 </TextBlock>
                                             </CheckBox>
                                         </DataTemplate>
