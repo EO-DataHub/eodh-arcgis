@@ -2,53 +2,59 @@ using System.Text.Json.Serialization;
 
 namespace eodh.Models;
 
-/// <summary>
-/// Identifies a commercial data provider and its capabilities.
-/// </summary>
 public enum CommercialProvider
 {
     Unknown,
-    AirbusOptical,  // PHR, Pleiades Neo — requires licence + endUserCountry
-    AirbusSar,      // TerraSAR-X etc. — requires licence, no coordinates
-    Planet          // No licence needed, supports coordinates
+    AirbusOptical,
+    AirbusSar,
+    Planet
 }
 
 /// <summary>
-/// Request body for POST {item_self_href}/quote.
-/// Coordinates uses GeoJSON Polygon ring structure: [[[lon,lat], ...]].
+/// The complete UI and request capability contract for one provider mode.
 /// </summary>
-public record QuoteRequest(
-    [property: JsonPropertyName("licence")] string? Licence,
-    [property: JsonPropertyName("coordinates")] double[][][]? Coordinates
-);
+public sealed record CommercialProviderCapabilities(
+    CommercialProvider Provider,
+    bool SupportsCoordinates,
+    bool RequiresEndUserCountry,
+    IReadOnlyList<string> LicenceOptions,
+    IReadOnlyList<string> ProductBundles,
+    IReadOnlyList<string> OrbitOptions,
+    IReadOnlyList<string> ResolutionVariantOptions,
+    IReadOnlyList<string> ProjectionOptions)
+{
+    public bool RequiresLicence => LicenceOptions.Count > 0;
+    public bool HasRadarOptions => OrbitOptions.Count > 0;
 
-/// <summary>
-/// Response from POST {item_self_href}/quote.
-/// </summary>
-public record QuoteResponse(
-    [property: JsonPropertyName("price")] decimal Price,
-    [property: JsonPropertyName("currency")] string Currency,
-    [property: JsonPropertyName("area")] double? Area,
-    [property: JsonPropertyName("areaUnit")] string? AreaUnit
-);
+    public bool RequiresResolutionVariant(string? bundle) =>
+        HasRadarOptions && !string.Equals(bundle, "SSC", StringComparison.OrdinalIgnoreCase);
 
-/// <summary>
-/// Request body for POST {item_self_href}/order.
-/// Coordinates uses GeoJSON Polygon ring structure: [[[lon,lat], ...]].
-/// </summary>
-public record OrderRequest(
+    public bool RequiresProjection(string? bundle) =>
+        HasRadarOptions &&
+        !string.Equals(bundle, "SSC", StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(bundle, "MGD", StringComparison.OrdinalIgnoreCase);
+}
+
+public sealed record QuoteRequest(
+    [property: JsonPropertyName("coordinates")] double[][][]? Coordinates,
     [property: JsonPropertyName("licence")] string? Licence,
+    [property: JsonPropertyName("productBundle")] string? ProductBundle);
+
+public sealed record QuoteResponse(
+    [property: JsonPropertyName("value")] decimal Value,
+    [property: JsonPropertyName("units")] string Units,
+    [property: JsonPropertyName("message")] string? Message);
+
+public sealed record RadarOptions(
+    [property: JsonPropertyName("orbit")] string Orbit,
+    [property: JsonPropertyName("resolutionVariant")] string? ResolutionVariant,
+    [property: JsonPropertyName("projection")] string? Projection);
+
+public sealed record OrderRequest(
+    [property: JsonPropertyName("productBundle")] string ProductBundle,
+    [property: JsonPropertyName("coordinates")] double[][][]? Coordinates,
     [property: JsonPropertyName("endUserCountry")] string? EndUserCountry,
-    [property: JsonPropertyName("productBundle")] string? ProductBundle,
-    [property: JsonPropertyName("coordinates")] double[][][]? Coordinates
-);
+    [property: JsonPropertyName("licence")] string? Licence,
+    [property: JsonPropertyName("radarOptions")] RadarOptions? RadarOptions);
 
-/// <summary>
-/// Result of placing an order. The Location header URL is where the
-/// ordered item will appear in the workspace once fulfilled.
-/// </summary>
-public record OrderResult(
-    bool Success,
-    string? LocationUrl,
-    string? ErrorMessage
-);
+public sealed record OrderResult(bool Success, string? LocationUrl, string? ErrorMessage);

@@ -343,6 +343,92 @@ public class ResultItemViewModelTests
         var vm = CreateItemVm(item);
 
         Assert.False(vm.IsCommercial);
-        Assert.Null(vm.LicenceOptions);
+        Assert.Empty(vm.LicenceOptions);
+    }
+}
+
+[Collection("ArcGIS-SDK")]
+[Trait("Category", "RequiresArcGIS")]
+public class CommercialResultItemViewModelTests
+{
+    [Fact]
+    public void Planet_HidesLicencePicker()
+    {
+        var vm = CreateCommercialVm("planet", "PSScene");
+
+        Assert.True(vm.IsCommercial);
+        Assert.False(vm.HasLicenceOptions);
+        Assert.Empty(vm.LicenceOptions);
+        Assert.NotEmpty(vm.ProductBundleOptions);
+    }
+
+    [Fact]
+    public void AirbusSar_ExposesRequiredRadarPickers()
+    {
+        var vm = CreateCommercialVm("airbus", "airbus_sar_data");
+
+        Assert.True(vm.HasLicenceOptions);
+        Assert.True(vm.HasRadarOptions);
+        Assert.Equal(3, vm.LicenceOptions.Count);
+        Assert.Equal(["SSC", "MGD", "GEC", "EEC"], vm.ProductBundleOptions);
+        Assert.NotNull(vm.SelectedOrbit);
+        Assert.False(vm.RequiresResolutionVariant);
+        Assert.False(vm.RequiresProjection);
+    }
+
+    [Fact]
+    public async Task ChangingCommercialInput_InvalidatesSuccessfulQuote()
+    {
+        var handler = new FixtureHttpHandler();
+        handler.RegisterJson("/quote", "{\"value\":100,\"units\":\"EUR\"}");
+        var auth = new TestAuthService(handler);
+        var vm = CreateCommercialVm(
+            "airbus", "airbus_phr_data", new CommercialOrderService(auth));
+
+        vm.GetQuoteCommand.Execute(null);
+        await Task.Delay(200);
+        Assert.True(vm.HasQuote);
+
+        vm.SelectedProductBundle = "General Use";
+
+        Assert.False(vm.HasQuote);
+        Assert.False(vm.PlaceOrderCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task PlaceOrder_RequiresFreshQuoteAndTermsAcceptance()
+    {
+        var handler = new FixtureHttpHandler();
+        handler.RegisterJson("/quote", "{\"value\":100,\"units\":\"EUR\"}");
+        var auth = new TestAuthService(handler);
+        var vm = CreateCommercialVm(
+            "airbus", "airbus_phr_data", new CommercialOrderService(auth));
+
+        vm.GetQuoteCommand.Execute(null);
+        await Task.Delay(200);
+        Assert.False(vm.PlaceOrderCommand.CanExecute(null));
+
+        vm.LicensingTermsAccepted = true;
+
+        Assert.True(vm.PlaceOrderCommand.CanExecute(null));
+        Assert.DoesNotContain(handler.Requests, request => request.Url.EndsWith("/order"));
+    }
+
+    private static ResultItemViewModel CreateCommercialVm(
+        string provider,
+        string collection,
+        CommercialOrderService? service = null)
+    {
+        var item = new StacItem("item", collection, null, [-1, 50, 0, 51], null, null,
+            [new StacLink("self",
+                $"https://eodatahub.org.uk/api/catalogue/stac/catalogs/commercial/catalogs/{provider}/collections/{collection}/items/item",
+                null, null)]);
+        return new ResultItemViewModel(
+            item,
+            new ThumbnailCache(),
+            new LayerService(new AuthService()),
+            [-1, 50, 0, 51],
+            "proprietary",
+            service);
     }
 }

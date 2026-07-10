@@ -35,27 +35,28 @@ public class WorkspaceModelTests
     [Fact]
     public void QuoteRequest_CanOmitOptionalFields()
     {
-        var request = new QuoteRequest(null, null);
+        var request = new QuoteRequest(null, null, null);
 
         Assert.Null(request.Licence);
         Assert.Null(request.Coordinates);
     }
 
     [Fact]
-    public void QuoteResponse_ContainsPriceAndCurrency()
+    public void QuoteResponse_ContainsValueUnitsAndMessage()
     {
-        var response = new QuoteResponse(450.00m, "EUR", 125.5, "km2");
+        var response = new QuoteResponse(450.00m, "EUR", "Minimum order");
 
-        Assert.Equal(450.00m, response.Price);
-        Assert.Equal("EUR", response.Currency);
-        Assert.Equal(125.5, response.Area);
+        Assert.Equal(450.00m, response.Value);
+        Assert.Equal("EUR", response.Units);
+        Assert.Equal("Minimum order", response.Message);
     }
 
     [Fact]
     public void OrderRequest_ContainsAllAirbusOpticalFields()
     {
-        var request = new OrderRequest("Standard", "GB", "General Use",
-            [[[-1.5, 51.0], [0.5, 51.0], [0.5, 52.0], [-1.5, 52.0], [-1.5, 51.0]]]);
+        var request = new OrderRequest("General Use",
+            [[[-1.5, 51.0], [0.5, 51.0], [0.5, 52.0], [-1.5, 52.0], [-1.5, 51.0]]],
+            "GB", "Standard", null);
 
         Assert.Equal("Standard", request.Licence);
         Assert.Equal("GB", request.EndUserCountry);

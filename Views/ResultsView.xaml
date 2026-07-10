@@ -221,11 +221,20 @@
 
                                     <!-- Licence selector -->
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
-                                                Visibility="{Binding LicenceOptions, Converter={StaticResource NullToVis}}">
+                                                Visibility="{Binding HasLicenceOptions, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="Licence:" FontSize="10"
                                                    VerticalAlignment="Center" Margin="0,0,4,0" />
                                         <ComboBox ItemsSource="{Binding LicenceOptions}"
                                                   SelectedItem="{Binding SelectedLicence}"
+                                                  FontSize="10" MinWidth="120" />
+                                    </StackPanel>
+
+                                    <!-- Product bundle (required by every provider) -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Text="Bundle:" FontSize="10"
+                                                   VerticalAlignment="Center" Margin="0,0,4,0" />
+                                        <ComboBox ItemsSource="{Binding ProductBundleOptions}"
+                                                  SelectedItem="{Binding SelectedProductBundle}"
                                                   FontSize="10" MinWidth="120" />
                                     </StackPanel>
 
@@ -236,6 +245,33 @@
                                                    VerticalAlignment="Center" Margin="0,0,4,0" />
                                         <TextBox Text="{Binding EndUserCountry, UpdateSourceTrigger=PropertyChanged}"
                                                  FontSize="10" MinWidth="40" MaxLength="3" />
+                                    </StackPanel>
+
+                                    <!-- Airbus SAR options -->
+                                    <StackPanel Visibility="{Binding HasRadarOptions, Converter={StaticResource BoolToVis}}">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <TextBlock Text="Orbit:" FontSize="10"
+                                                       VerticalAlignment="Center" Margin="0,0,4,0" />
+                                            <ComboBox ItemsSource="{Binding OrbitOptions}"
+                                                      SelectedItem="{Binding SelectedOrbit}"
+                                                      FontSize="10" MinWidth="100" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                                                    Visibility="{Binding RequiresResolutionVariant, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="Resolution:" FontSize="10"
+                                                       VerticalAlignment="Center" Margin="0,0,4,0" />
+                                            <ComboBox ItemsSource="{Binding ResolutionVariantOptions}"
+                                                      SelectedItem="{Binding SelectedResolutionVariant}"
+                                                      FontSize="10" MinWidth="100" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                                                    Visibility="{Binding RequiresProjection, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="Projection:" FontSize="10"
+                                                       VerticalAlignment="Center" Margin="0,0,4,0" />
+                                            <ComboBox ItemsSource="{Binding ProjectionOptions}"
+                                                      SelectedItem="{Binding SelectedProjection}"
+                                                      FontSize="10" MinWidth="100" />
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- Quote button and result -->
@@ -252,17 +288,29 @@
                                                    VerticalAlignment="Center" Margin="8,0,0,0"
                                                    Visibility="{Binding HasQuote, Converter={StaticResource BoolToVis}}" />
                                     </StackPanel>
+                                    <TextBlock Text="{Binding QuoteMessage}"
+                                               FontSize="10" Opacity="0.7" TextWrapping="Wrap"
+                                               Visibility="{Binding QuoteMessage, Converter={StaticResource NullToVis}}"
+                                               Margin="0,0,0,4" />
 
                                     <!-- Order button (visible after quote) -->
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
-                                                Visibility="{Binding HasQuote, Converter={StaticResource BoolToVis}}">
-                                        <Button Content="Place Order"
-                                                Command="{Binding PlaceOrderCommand}"
-                                                Padding="8,2" FontSize="10" />
-                                        <ProgressBar IsIndeterminate="True"
-                                                     Visibility="{Binding IsOrdering, Converter={StaticResource BoolToVis}}"
-                                                     Width="60" Height="2" Margin="8,0,0,0"
-                                                     VerticalAlignment="Center" />
+                                    <StackPanel Visibility="{Binding HasQuote, Converter={StaticResource BoolToVis}}">
+                                        <CheckBox IsChecked="{Binding LicensingTermsAccepted}"
+                                                  Content="I accept the applicable licensing terms"
+                                                  FontSize="10" Margin="0,0,0,4" />
+                                        <TextBlock FontSize="10" Margin="0,0,0,4">
+                                            <Hyperlink NavigateUri="https://docs.eodatahub.org.uk/Getting-Started/workspaces/linked-accounts/"
+                                                       RequestNavigate="CommercialHelpLink_RequestNavigate">Provider account and licensing guidance</Hyperlink>
+                                        </TextBlock>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                            <Button Content="Place Order"
+                                                    Command="{Binding PlaceOrderCommand}"
+                                                    Padding="8,2" FontSize="10" />
+                                            <ProgressBar IsIndeterminate="True"
+                                                         Visibility="{Binding IsOrdering, Converter={StaticResource BoolToVis}}"
+                                                         Width="60" Height="2" Margin="8,0,0,0"
+                                                         VerticalAlignment="Center" />
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- Status / Error messages -->

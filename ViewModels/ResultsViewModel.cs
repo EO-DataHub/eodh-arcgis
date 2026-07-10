@@ -18,7 +18,7 @@ internal class ResultsViewModel : PropertyChangedBase
     private readonly StacClient _stacClient;
     private readonly LayerService _layerService;
     private readonly ThumbnailCache _thumbnailCache;
-    private readonly WorkspaceService? _workspaceService;
+    private readonly CommercialOrderService? _commercialOrderService;
     private readonly FootprintOverlayService _footprintOverlayService;
 
     private ResultItemViewModel? _selectedItem;
@@ -29,13 +29,13 @@ internal class ResultsViewModel : PropertyChangedBase
     private bool _showFootprints = true;
 
     public ResultsViewModel(StacClient stacClient, LayerService layerService,
-        ThumbnailCache thumbnailCache, WorkspaceService? workspaceService = null,
+        ThumbnailCache thumbnailCache, CommercialOrderService? commercialOrderService = null,
         FootprintOverlayService? footprintOverlayService = null)
     {
         _stacClient = stacClient;
         _layerService = layerService;
         _thumbnailCache = thumbnailCache;
-        _workspaceService = workspaceService;
+        _commercialOrderService = commercialOrderService;
         _footprintOverlayService = footprintOverlayService ?? new FootprintOverlayService();
 
         LoadSelectedCommand = new RelayCommand(ExecuteLoadSelected, () => SelectedItem != null);
@@ -117,7 +117,7 @@ internal class ResultsViewModel : PropertyChangedBase
 
             var vm = new ResultItemViewModel(
                 item, _thumbnailCache, _layerService,
-                filters?.Bbox, collectionLicense, _workspaceService);
+                filters?.Bbox, collectionLicense, _commercialOrderService);
             Results.Add(vm);
         }
 
@@ -185,7 +185,7 @@ internal class ResultItemViewModel : PropertyChangedBase
 {
     private readonly ThumbnailCache _thumbnailCache;
     private readonly LayerService _layerService;
-    private readonly WorkspaceService? _workspaceService;
+    private readonly CommercialOrderService? _commercialOrderService;
     private readonly double[]? _aoiBbox;
     private BitmapImage? _thumbnail;
     private bool _isLoadingLayer;
@@ -197,20 +197,25 @@ internal class ResultItemViewModel : PropertyChangedBase
     private bool _isQuoting;
     private bool _isOrdering;
     private QuoteResponse? _currentQuote;
+    private CommercialQuoteContext? _quotedContext;
     private string? _selectedLicence;
     private string? _endUserCountry;
     private string? _selectedProductBundle;
+    private string? _selectedOrbit;
+    private string? _selectedResolutionVariant;
+    private string? _selectedProjection;
+    private bool _licensingTermsAccepted;
     private string? _purchaseStatus;
     private string? _purchaseError;
 
     public ResultItemViewModel(StacItem item, ThumbnailCache thumbnailCache,
         LayerService layerService, double[]? aoiBbox = null,
-        string? collectionLicense = null, WorkspaceService? workspaceService = null)
+        string? collectionLicense = null, CommercialOrderService? commercialOrderService = null)
     {
         Item = item;
         _thumbnailCache = thumbnailCache;
         _layerService = layerService;
-        _workspaceService = workspaceService;
+        _commercialOrderService = commercialOrderService;
         _aoiBbox = aoiBbox;
 
         AoiOverlap = ResultFormat.FormatOverlap(BboxMath.CalculateOverlapPercent(item.Bbox, aoiBbox));
@@ -219,14 +224,21 @@ internal class ResultItemViewModel : PropertyChangedBase
         // Commercial data detection
         IsCommercial = CommercialHelper.IsCommercialItem(item);
         Provider = CommercialHelper.DetectProvider(item);
+        Capabilities = CommercialHelper.GetCapabilities(Provider);
+        LicenceOptions = Capabilities.LicenceOptions;
+        ProductBundleOptions = Capabilities.ProductBundles;
+        OrbitOptions = Capabilities.OrbitOptions;
+        ResolutionVariantOptions = Capabilities.ResolutionVariantOptions;
+        ProjectionOptions = Capabilities.ProjectionOptions;
 
         if (IsCommercial)
         {
-            var licences = CommercialHelper.GetLicenceOptions(Provider);
-            LicenceOptions = licences.ToList();
-            _selectedLicence = licences.FirstOrDefault();
-            _endUserCountry = "GB";
-            _selectedProductBundle = "General Use";
+            _selectedLicence = LicenceOptions.FirstOrDefault();
+            _endUserCountry = Capabilities.RequiresEndUserCountry ? "GB" : null;
+            _selectedProductBundle = ProductBundleOptions.FirstOrDefault();
+            _selectedOrbit = OrbitOptions.FirstOrDefault();
+            _selectedResolutionVariant = ResolutionVariantOptions.FirstOrDefault();
+            _selectedProjection = ProjectionOptions.FirstOrDefault();
         }
 
         // Build asset detail list
@@ -298,37 +310,91 @@ internal class ResultItemViewModel : PropertyChangedBase
     // Purchase properties
     public bool IsCommercial { get; }
     public CommercialProvider Provider { get; }
-    public List<string>? LicenceOptions { get; }
-    public bool RequiresEndUserCountry => CommercialHelper.RequiresEndUserCountry(Provider);
+    public CommercialProviderCapabilities Capabilities { get; }
+    public IReadOnlyList<string> LicenceOptions { get; }
+    public IReadOnlyList<string> ProductBundleOptions { get; }
+    public IReadOnlyList<string> OrbitOptions { get; }
+    public IReadOnlyList<string> ResolutionVariantOptions { get; }
+    public IReadOnlyList<string> ProjectionOptions { get; }
+    public bool HasLicenceOptions => LicenceOptions.Count > 0;
+    public bool RequiresEndUserCountry => Capabilities.RequiresEndUserCountry;
+    public bool HasRadarOptions => Capabilities.HasRadarOptions;
+    public bool RequiresResolutionVariant =>
+        Capabilities.RequiresResolutionVariant(SelectedProductBundle);
+    public bool RequiresProjection =>
+        Capabilities.RequiresProjection(SelectedProductBundle);
 
     public string? SelectedLicence
     {
         get => _selectedLicence;
-        set => SetProperty(ref _selectedLicence, value);
+        set => SetCommercialInput(ref _selectedLicence, value);
     }
 
     public string? EndUserCountry
     {
         get => _endUserCountry;
-        set => SetProperty(ref _endUserCountry, value);
+        set => SetCommercialInput(ref _endUserCountry, value);
     }
 
     public string? SelectedProductBundle
     {
         get => _selectedProductBundle;
-        set => SetProperty(ref _selectedProductBundle, value);
+        set
+        {
+            if (SetCommercialInput(ref _selectedProductBundle, value))
+            {
+                NotifyPropertyChanged(nameof(RequiresResolutionVariant));
+                NotifyPropertyChanged(nameof(RequiresProjection));
+            }
+        }
+    }
+
+    public string? SelectedOrbit
+    {
+        get => _selectedOrbit;
+        set => SetCommercialInput(ref _selectedOrbit, value);
+    }
+
+    public string? SelectedResolutionVariant
+    {
+        get => _selectedResolutionVariant;
+        set => SetCommercialInput(ref _selectedResolutionVariant, value);
+    }
+
+    public string? SelectedProjection
+    {
+        get => _selectedProjection;
+        set => SetCommercialInput(ref _selectedProjection, value);
+    }
+
+    public bool LicensingTermsAccepted
+    {
+        get => _licensingTermsAccepted;
+        set
+        {
+            if (SetProperty(ref _licensingTermsAccepted, value))
+                RaisePurchaseCanExecuteChanged();
+        }
     }
 
     public bool IsQuoting
     {
         get => _isQuoting;
-        set => SetProperty(ref _isQuoting, value);
+        set
+        {
+            SetProperty(ref _isQuoting, value);
+            RaisePurchaseCanExecuteChanged();
+        }
     }
 
     public bool IsOrdering
     {
         get => _isOrdering;
-        set => SetProperty(ref _isOrdering, value);
+        set
+        {
+            SetProperty(ref _isOrdering, value);
+            RaisePurchaseCanExecuteChanged();
+        }
     }
 
     public QuoteResponse? CurrentQuote
@@ -339,15 +405,18 @@ internal class ResultItemViewModel : PropertyChangedBase
             SetProperty(ref _currentQuote, value);
             NotifyPropertyChanged(nameof(QuoteDisplay));
             NotifyPropertyChanged(nameof(HasQuote));
-            ((RelayCommand)PlaceOrderCommand).RaiseCanExecuteChanged();
+            NotifyPropertyChanged(nameof(QuoteMessage));
+            RaisePurchaseCanExecuteChanged();
         }
     }
 
     public bool HasQuote => _currentQuote != null;
 
     public string? QuoteDisplay => _currentQuote != null
-        ? $"{_currentQuote.Price:N2} {_currentQuote.Currency}"
+        ? $"{_currentQuote.Value:N2} {_currentQuote.Units}"
         : null;
+
+    public string? QuoteMessage => _currentQuote?.Message;
 
     public string? PurchaseStatus
     {
@@ -408,31 +477,35 @@ internal class ResultItemViewModel : PropertyChangedBase
     #region Private Methods
 
     private bool CanGetQuote() =>
-        IsCommercial && !_isQuoting && Item.SelfLink != null && _workspaceService != null;
+        IsCommercial && !_isQuoting && !_isOrdering && Item.SelfLink != null &&
+        _commercialOrderService != null && HasValidCommercialInputs();
 
     private bool CanPlaceOrder() =>
-        IsCommercial && !_isOrdering && _currentQuote != null && Item.SelfLink != null && _workspaceService != null;
+        CanGetQuote() && _currentQuote != null && LicensingTermsAccepted &&
+        _quotedContext == CreateQuoteContext();
 
     private async void ExecuteGetQuote()
     {
-        if (Item.SelfLink == null || _workspaceService == null) return;
+        if (Item.SelfLink == null || _commercialOrderService == null || !HasValidCommercialInputs())
+            return;
 
         IsQuoting = true;
         PurchaseError = null;
         try
         {
-            var coordinates = CommercialHelper.SupportsCoordinates(Provider)
+            var coordinates = Capabilities.SupportsCoordinates
                 ? CommercialHelper.BboxToCoordinateRing(_aoiBbox)
                 : null;
-
-            var licence = CommercialHelper.RequiresLicence(Provider) ? _selectedLicence : null;
-
-            var request = new QuoteRequest(licence, coordinates);
-            CurrentQuote = await _workspaceService.GetQuoteAsync(Item.SelfLink, request);
+            var licence = Capabilities.RequiresLicence ? _selectedLicence : null;
+            var request = new QuoteRequest(coordinates, licence, _selectedProductBundle);
+            var quote = await _commercialOrderService.GetQuoteAsync(Item.SelfLink, request);
+            _quotedContext = CreateQuoteContext();
+            CurrentQuote = quote;
         }
         catch (Exception ex)
         {
-            PurchaseError = $"Quote error: {ex.Message}";
+            InvalidateQuote();
+            PurchaseError = ex.Message;
         }
         finally
         {
@@ -442,7 +515,8 @@ internal class ResultItemViewModel : PropertyChangedBase
 
     private async void ExecutePlaceOrder()
     {
-        if (Item.SelfLink == null || _workspaceService == null) return;
+        if (Item.SelfLink == null || _commercialOrderService == null || !CanPlaceOrder())
+            return;
 
         var confirm = ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
             $"You are about to order this item for {QuoteDisplay}.\n\n" +
@@ -457,15 +531,18 @@ internal class ResultItemViewModel : PropertyChangedBase
         PurchaseError = null;
         try
         {
-            var coordinates = CommercialHelper.SupportsCoordinates(Provider)
+            var coordinates = Capabilities.SupportsCoordinates
                 ? CommercialHelper.BboxToCoordinateRing(_aoiBbox)
                 : null;
-
-            var licence = CommercialHelper.RequiresLicence(Provider) ? _selectedLicence : null;
-            var endUserCountry = CommercialHelper.RequiresEndUserCountry(Provider) ? _endUserCountry : null;
-
-            var request = new OrderRequest(licence, endUserCountry, _selectedProductBundle, coordinates);
-            var result = await _workspaceService.PlaceOrderAsync(Item.SelfLink, request);
+            var licence = Capabilities.RequiresLicence ? _selectedLicence : null;
+            var endUserCountry = Capabilities.RequiresEndUserCountry ? _endUserCountry : null;
+            var request = new OrderRequest(
+                _selectedProductBundle!,
+                coordinates,
+                endUserCountry,
+                licence,
+                CreateRadarOptions());
+            var result = await _commercialOrderService.PlaceOrderAsync(Item.SelfLink, request);
 
             if (result.Success)
                 PurchaseStatus = "Ordered — check workspace for delivery status";
@@ -474,12 +551,85 @@ internal class ResultItemViewModel : PropertyChangedBase
         }
         catch (Exception ex)
         {
-            PurchaseError = $"Order error: {ex.Message}";
+            PurchaseError = ex.Message;
         }
         finally
         {
             IsOrdering = false;
         }
+    }
+
+    private bool HasValidCommercialInputs()
+    {
+        if (Provider == CommercialProvider.Unknown ||
+            string.IsNullOrWhiteSpace(_selectedProductBundle) ||
+            !ProductBundleOptions.Contains(_selectedProductBundle))
+            return false;
+
+        if (Capabilities.RequiresLicence &&
+            (string.IsNullOrWhiteSpace(_selectedLicence) || !LicenceOptions.Contains(_selectedLicence)))
+            return false;
+
+        if (Capabilities.RequiresEndUserCountry && string.IsNullOrWhiteSpace(_endUserCountry))
+            return false;
+
+        if (Capabilities.HasRadarOptions &&
+            (string.IsNullOrWhiteSpace(_selectedOrbit) || !OrbitOptions.Contains(_selectedOrbit)))
+            return false;
+
+        if (RequiresResolutionVariant &&
+            (string.IsNullOrWhiteSpace(_selectedResolutionVariant) ||
+             !ResolutionVariantOptions.Contains(_selectedResolutionVariant)))
+            return false;
+
+        return !RequiresProjection ||
+            (!string.IsNullOrWhiteSpace(_selectedProjection) &&
+             ProjectionOptions.Contains(_selectedProjection));
+    }
+
+    private RadarOptions? CreateRadarOptions()
+    {
+        if (!Capabilities.HasRadarOptions)
+            return null;
+
+        return new RadarOptions(
+            _selectedOrbit!,
+            RequiresResolutionVariant ? _selectedResolutionVariant : null,
+            RequiresProjection ? _selectedProjection : null);
+    }
+
+    private CommercialQuoteContext CreateQuoteContext() => new(
+        Item.Id,
+        _aoiBbox == null ? null : string.Join(",", _aoiBbox.Select(value => value.ToString("R"))),
+        Provider,
+        Capabilities.RequiresLicence ? _selectedLicence : null,
+        _selectedProductBundle,
+        Capabilities.RequiresEndUserCountry ? _endUserCountry : null,
+        Capabilities.HasRadarOptions ? _selectedOrbit : null,
+        RequiresResolutionVariant ? _selectedResolutionVariant : null,
+        RequiresProjection ? _selectedProjection : null);
+
+    private bool SetCommercialInput(ref string? field, string? value)
+    {
+        if (!SetProperty(ref field, value))
+            return false;
+
+        InvalidateQuote();
+        RaisePurchaseCanExecuteChanged();
+        return true;
+    }
+
+    private void InvalidateQuote()
+    {
+        _quotedContext = null;
+        CurrentQuote = null;
+        PurchaseStatus = null;
+    }
+
+    private void RaisePurchaseCanExecuteChanged()
+    {
+        ((RelayCommand)GetQuoteCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)PlaceOrderCommand).RaiseCanExecuteChanged();
     }
 
     private async Task LoadThumbnailAsync()
@@ -497,6 +647,17 @@ internal class ResultItemViewModel : PropertyChangedBase
 
     #endregion
 }
+
+internal sealed record CommercialQuoteContext(
+    string ItemId,
+    string? Coordinates,
+    CommercialProvider Provider,
+    string? Licence,
+    string? ProductBundle,
+    string? EndUserCountry,
+    string? Orbit,
+    string? ResolutionVariant,
+    string? Projection);
 
 /// <summary>
 /// Detail view model for a single asset in the expandable list.

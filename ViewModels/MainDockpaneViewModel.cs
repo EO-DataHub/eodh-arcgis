@@ -33,11 +33,11 @@ internal class MainDockpaneViewModel : DockPane
         var stacClient = new Services.StacClient(authService);
         var thumbnailCache = new Services.ThumbnailCache();
         var layerService = new Services.LayerService(authService);
-        var workspaceService = new Services.WorkspaceService(authService);
+        var commercialOrderService = new Services.CommercialOrderService(authService);
 
         _loginViewModel = new LoginViewModel(authService, OnLoginSuccess);
         _searchViewModel = new SearchViewModel(stacClient, OnSearchCompleted);
-        _resultsViewModel = new ResultsViewModel(stacClient, layerService, thumbnailCache, workspaceService);
+        _resultsViewModel = new ResultsViewModel(stacClient, layerService, thumbnailCache, commercialOrderService);
         _timelineViewModel = new TimelineViewModel(stacClient, layerService, thumbnailCache);
         _workspaceViewModel = new WorkspaceViewModel(authService);
         _workflowsViewModel = new WorkflowsViewModel();
