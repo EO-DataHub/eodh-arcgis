@@ -104,30 +104,34 @@
                                            FontSize="9" Opacity="0.6" />
                             </WrapPanel>
 
-                            <StackPanel Visibility="{Binding CanLoadIntoMap, Converter={StaticResource BoolToVis}}"
-                                        Margin="0,5,0,0">
-                                <ItemsControl ItemsSource="{Binding Assets}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <CheckBox IsChecked="{Binding IsSelected}"
-                                                      IsEnabled="{Binding IsLoadable}"
-                                                      FontSize="10" Margin="0,1">
-                                                <TextBlock>
-                                                    <Run Text="{Binding DisplayName, Mode=OneWay}" />
-                                                    <Run Text=" (" /><Run Text="{Binding FileType, Mode=OneWay}" /><Run Text=")" />
-                                                </TextBlock>
-                                            </CheckBox>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                    <Button Content="Load into map" Command="{Binding LoadCommand}"
-                                            Padding="7,2" FontSize="10" />
-                                    <ProgressBar IsIndeterminate="True"
-                                                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
-                                                 Width="60" Height="2" Margin="8,0,0,0" />
+                            <Expander Header="Available loadable files"
+                                      IsExpanded="False"
+                                      Visibility="{Binding CanLoadIntoMap, Converter={StaticResource BoolToVis}}"
+                                      Margin="0,5,0,0">
+                                <StackPanel Margin="18,3,0,0">
+                                    <ItemsControl ItemsSource="{Binding Assets}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <CheckBox IsChecked="{Binding IsSelected}"
+                                                          IsEnabled="{Binding IsLoadable}"
+                                                          FontSize="10" Margin="0,1">
+                                                    <TextBlock>
+                                                        <Run Text="{Binding DisplayName, Mode=OneWay}" />
+                                                        <Run Text=" (" /><Run Text="{Binding FileType, Mode=OneWay}" /><Run Text=")" />
+                                                    </TextBlock>
+                                                </CheckBox>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Button Content="Load into map" Command="{Binding LoadCommand}"
+                                                Padding="7,2" FontSize="10" />
+                                        <ProgressBar IsIndeterminate="True"
+                                                     Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+                                                     Width="60" Height="2" Margin="8,0,0,0" />
+                                    </StackPanel>
                                 </StackPanel>
-                            </StackPanel>
+                            </Expander>
                         </StackPanel>
                     </Border>
                 </DataTemplate>
