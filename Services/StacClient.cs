@@ -33,7 +33,7 @@ public class StacClient
     {
         using var client = _authService.CreateHttpClient();
         using var response = await client.GetAsync(CatalogRoot.Public.Path, ct);
-        await ApiResponse.EnsureSuccessAsync(response, "authentication", ct);
+        await ApiResponse.EnsureSuccessAsync(response, "authentication", ct, _authService.ApiToken);
     }
 
     /// <summary>
@@ -63,7 +63,7 @@ public class StacClient
                 continue;
 
             using var response = await client.GetAsync(request.Url, ct);
-            await ApiResponse.EnsureSuccessAsync(response, "catalogue discovery", ct);
+            await ApiResponse.EnsureSuccessAsync(response, "catalogue discovery", ct, _authService.ApiToken);
             var json = await response.Content.ReadAsStringAsync(ct);
 
             using var document = JsonDocument.Parse(json);
@@ -109,7 +109,7 @@ public class StacClient
         var jsonBody = JsonSerializer.Serialize(body, JsonOptions);
         using var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
         using var response = await client.PostAsync(searchUrl, content, ct);
-        await ApiResponse.EnsureSuccessAsync(response, "item search", ct);
+        await ApiResponse.EnsureSuccessAsync(response, "item search", ct, _authService.ApiToken);
 
         var json = await response.Content.ReadAsStringAsync(ct);
         var itemCollection = JsonSerializer.Deserialize<StacItemCollection>(json, JsonOptions);
@@ -122,7 +122,7 @@ public class StacClient
     {
         using var client = _authService.CreateHttpClient();
         using var response = await client.GetAsync(nextUrl, ct);
-        await ApiResponse.EnsureSuccessAsync(response, "search pagination", ct);
+        await ApiResponse.EnsureSuccessAsync(response, "search pagination", ct, _authService.ApiToken);
         var json = await response.Content.ReadAsStringAsync(ct);
         return CreateSearchResult(JsonSerializer.Deserialize<StacItemCollection>(json, JsonOptions));
     }
@@ -140,7 +140,7 @@ public class StacClient
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return null;
 
-        await ApiResponse.EnsureSuccessAsync(response, "item retrieval", ct);
+        await ApiResponse.EnsureSuccessAsync(response, "item retrieval", ct, _authService.ApiToken);
         var json = await response.Content.ReadAsStringAsync(ct);
         return JsonSerializer.Deserialize<StacItem>(json, JsonOptions);
     }

@@ -27,6 +27,7 @@ public class DrawAoiToolTests
         var auth = new TestAuthService(handler);
         var stacClient = new StacClient(auth);
         var vm = new SearchViewModel(stacClient, _ => { });
+        vm.SelectedCollection = CreateEntry();
 
         vm.SetAoiFromPolygon(envelope);
 
@@ -42,6 +43,7 @@ public class DrawAoiToolTests
         var auth = new TestAuthService(handler);
         var stacClient = new StacClient(auth);
         var vm = new SearchViewModel(stacClient, _ => { });
+        vm.SelectedCollection = CreateEntry();
 
         var envelope = EnvelopeBuilderEx.CreateEnvelope(
             new Coordinate2D(-1.5, 51.0),
@@ -54,4 +56,11 @@ public class DrawAoiToolTests
         Assert.Contains("-1.50", vm.AoiDescription);
         Assert.Contains("52.00", vm.AoiDescription);
     }
+
+    private static eodh.Models.CatalogCollectionEntry CreateEntry() => new(
+        eodh.Models.CatalogRoot.Public,
+        "Provider",
+        "https://eodatahub.org.uk/provider",
+        "https://eodatahub.org.uk/provider/search",
+        new eodh.Models.StacCollection("collection", "Collection", null, null, null, null, null));
 }

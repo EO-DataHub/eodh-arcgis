@@ -162,7 +162,7 @@ public class LoginViewModelTests
         vm.LoginCommand.Execute(null);
 
         Assert.True(vm.HasError);
-        Assert.Equal("Please enter your API token.", vm.ErrorMessage);
+        Assert.Equal("Please enter your workspace API key (not the Token ID).", vm.ErrorMessage);
     }
 
     [Fact]

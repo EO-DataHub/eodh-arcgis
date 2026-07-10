@@ -168,4 +168,20 @@ public class CommercialOrderServiceTests
         Assert.Contains("body.productBundle", error.Message);
         Assert.Contains("field required", error.Message);
     }
+
+    [Fact]
+    public async Task GetQuoteAsync_RedactsApiKeyEchoedByBackend()
+    {
+        var (service, handler) = CreateService();
+        handler.RegisterJson("/quote",
+            "{\"detail\":\"invalid value test-token\"}",
+            HttpStatusCode.BadRequest);
+
+        var error = await Assert.ThrowsAsync<ApiException>(() => service.GetQuoteAsync(
+            "https://eodatahub.org.uk/items/test",
+            new QuoteRequest(null, "Standard", "Visual")));
+
+        Assert.DoesNotContain("test-token", error.Message);
+        Assert.Contains("[redacted]", error.Message);
+    }
 }

@@ -39,12 +39,14 @@ public sealed class WorkspaceService
         while (pageUrl != null && visitedCollectionPages.Add(Canonicalize(pageUrl)))
         {
             using var response = await client.GetAsync(pageUrl, ct);
-            await ApiResponse.EnsureSuccessAsync(response, "workspace commercial collections", ct);
+            await ApiResponse.EnsureSuccessAsync(
+                response, "workspace commercial collections", ct, _authService.ApiToken);
             var json = await response.Content.ReadAsStringAsync(ct);
             var page = JsonSerializer.Deserialize<StacCollectionPage>(json, JsonOptions);
 
             foreach (var collection in page?.Collections ?? [])
-                records.AddRange(await GetCollectionRecordsAsync(client, collection, pageUrl, ct));
+                records.AddRange(await GetCollectionRecordsAsync(
+                    client, collection, pageUrl, _authService.ApiToken, ct));
 
             pageUrl = ResolveLink(page?.Links, "next", pageUrl);
         }
@@ -60,6 +62,7 @@ public sealed class WorkspaceService
         HttpClient client,
         StacCollection collection,
         Uri collectionPageUrl,
+        string? apiKey,
         CancellationToken ct)
     {
         var itemsUrl = ResolveLink(collection.Links, "items", collectionPageUrl);
@@ -74,7 +77,7 @@ public sealed class WorkspaceService
         while (pageUrl != null && visited.Add(Canonicalize(pageUrl)))
         {
             using var response = await client.GetAsync(pageUrl, ct);
-            await ApiResponse.EnsureSuccessAsync(response, "workspace commercial items", ct);
+            await ApiResponse.EnsureSuccessAsync(response, "workspace commercial items", ct, apiKey);
             var json = await response.Content.ReadAsStringAsync(ct);
             var page = JsonSerializer.Deserialize<StacItemCollection>(json, JsonOptions);
 

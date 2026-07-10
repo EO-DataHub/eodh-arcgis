@@ -46,7 +46,8 @@ internal static class ApiResponse
     public static async Task EnsureSuccessAsync(
         HttpResponseMessage response,
         string operation,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? sensitiveValue = null)
     {
         if (response.IsSuccessStatusCode)
             return;
@@ -56,6 +57,8 @@ internal static class ApiResponse
         var status = response.StatusCode;
         var category = Categorize(status, backendMessage);
         var message = CreateSafeMessage(status, category, backendMessage);
+        if (!string.IsNullOrEmpty(sensitiveValue))
+            message = message.Replace(sensitiveValue, "[redacted]", StringComparison.Ordinal);
         var correlationId = GetCorrelationId(response);
 
         if (!string.IsNullOrWhiteSpace(correlationId))

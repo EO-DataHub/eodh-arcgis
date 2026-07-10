@@ -37,7 +37,7 @@ public sealed class CommercialOrderService
         using var client = _authService.CreateHttpClient();
         using var content = CreateContent(request);
         using var response = await client.PostAsync(AppendOperation(itemSelfHref, "quote"), content, ct);
-        await ApiResponse.EnsureSuccessAsync(response, "commercial quote", ct);
+        await ApiResponse.EnsureSuccessAsync(response, "commercial quote", ct, _authService.ApiToken);
 
         var json = await response.Content.ReadAsStringAsync(ct);
         return JsonSerializer.Deserialize<QuoteResponse>(json, ReadOptions)
@@ -52,7 +52,7 @@ public sealed class CommercialOrderService
         using var client = _authService.CreateHttpClient();
         using var content = CreateContent(request);
         using var response = await client.PostAsync(AppendOperation(itemSelfHref, "order"), content, ct);
-        await ApiResponse.EnsureSuccessAsync(response, "commercial order", ct);
+        await ApiResponse.EnsureSuccessAsync(response, "commercial order", ct, _authService.ApiToken);
         return new OrderResult(true, response.Headers.Location?.ToString(), null);
     }
 

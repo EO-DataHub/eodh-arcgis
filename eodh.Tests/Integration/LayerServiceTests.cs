@@ -15,7 +15,7 @@ namespace eodh.Tests.Integration;
 [Trait("Category", "RequiresArcGIS")]
 public class LayerServiceTests
 {
-    private readonly LayerService _layerService = new();
+    private readonly LayerService _layerService = new(new AuthService());
 
     /// <summary>
     /// MapView.Active throws NRE when Pro isn't initialised (not just null).

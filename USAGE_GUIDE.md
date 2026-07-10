@@ -1,123 +1,94 @@
 # EODH Plugin for ArcGIS Pro — Usage Guide
 
-The EODH plugin brings the [Earth Observation DataHub](https://eodatahub.org.uk) into ArcGIS Pro, letting you search, preview, and load satellite imagery directly into your map. It also supports purchasing commercial imagery from Airbus and Planet.
+The EODH plugin brings the [Earth Observation Data Hub](https://eodatahub.org.uk) into ArcGIS Pro. It supports curated dataset search, temporary result footprints, loading supported assets, commercial quotes and orders, and commercial order records for one authenticated workspace.
 
 ## Requirements
 
 - Windows 10/11 (x64)
 - ArcGIS Pro 3.6 or later
-- An EODH account with an API token
+- An EODH workspace and a current Workspace API key
+
+Workspace API keys expire after at most 30 days. The add-in does not renew them automatically.
 
 ## Installation
 
-1. Download the latest `eodh.esriAddinX` file from the [GitHub Releases](https://github.com/EO-DataHub/eodh-arcgis/releases) page.
-2. Double-click the downloaded file.
-3. Click **Install Add-In** when prompted.
-4. Restart ArcGIS Pro if it was already open.
+1. Download the latest `eodh.esriAddinX` from [GitHub Releases](https://github.com/EO-DataHub/eodh-arcgis/releases).
+2. Double-click the file and select **Install Add-In**.
+3. Restart ArcGIS Pro if it was already open.
 
-After installation, a new **EODH** tab appears in the ArcGIS Pro ribbon.
+The **EODH** tab then appears in the ArcGIS Pro ribbon.
 
-![EODH tab in ArcGIS Pro ribbon](Images/ribbon.png)
+## Signing in
 
-## Getting Started
+1. Open the EODH dockpane from the ribbon.
+2. Select Production, Staging, or Test.
+3. Enter the **Workspace name**.
+4. Paste the **Workspace API key** — use the API Key, not the Token ID.
+5. Select **Sign In**.
 
-### Signing In
+The key is encrypted locally with Windows DPAPI and is not written to logs. If a saved key is invalid or expired, the add-in returns to sign-in with an actionable message. Create or copy a current key from the [EODH workspace credentials page](https://docs.eodatahub.org.uk/Getting-Started/workspaces/workspace-credentials/).
 
-1. Click the **EODH Search** button in the EODH ribbon tab to open the dockpane.
-2. Select your environment (Production, Staging, or Test). If you're not sure, select Production.
-3. Enter your workspace name and API token.
-4. Click **Sign In**.
+Select **Sign Out** in the dockpane header to clear the saved credentials and temporary result footprints.
 
-Your credentials are encrypted and stored locally, so you won't need to sign in again next time.
+## Searching for data
 
-![Login view](Images/login.png)
+### Select a catalogue and collection
 
-### Signing Out
+Search exposes exactly two curated roots:
 
-Click **Sign Out** in the header bar at the top of the dockpane.
+- **Public**
+- **Commercial**
 
-## Searching for Data
+The add-in discovers descendant catalogues and collections at runtime. Collections appear as a flat, sorted list labelled **Provider — Collection**. Workspace, user, and internal processing catalogues are not included.
 
-The **Search** tab lets you define filters and query the EODH catalog.
-
-![Search tab](Images/search.png)
-
-### 1. Select a Catalog and Collection
-
-Use the dropdown menus at the top of the Search tab to choose a catalog and, optionally, a specific collection within it.
-
-### 2. Define an Area of Interest (AOI)
-
-Choose one of four methods:
+### Define an area of interest
 
 | Method | Description |
-|--------|-------------|
-| **Draw on Map** | Click the button, then draw a rectangle on the map canvas |
-| **Map Extent** | Use the current map view as the AOI |
-| **Import GeoJSON** | Load a boundary from a `.geojson` or `.json` file |
-| **Clear** | Remove the current AOI |
+|---|---|
+| **Draw on Map** | Draw a rectangle on the active map. |
+| **Map Extent** | Use the current map view as the bounding box. |
+| **Import GeoJSON** | Import a `.geojson` or `.json` boundary. |
+| **Clear** | Remove the current area of interest. |
 
-![Drawing an AOI on the map](Images/aoi.png)
+The current bounding box is used for search and, where supported, commercial quote/order coordinates.
 
-### 3. Set Date Range
+### Set dates and cloud cover
 
-Use the date pickers to define the start and end dates for your search. By default, this covers the last two months.
+The date range defaults to the last two months. Set **Max Cloud Cover** below 100% to add a cloud predicate; 100% sends no cloud predicate. Cloud cover is meaningful only for datasets that publish cloud-cover metadata.
 
-### 4. Set Max Cloud Cover
+Select **Search** to open the current result page.
 
-Drag the slider to set a cloud cover threshold (0–100%). Only results at or below this value will be returned.
+## Browsing results and footprints
 
-### 5. Run the Search
+The Results tab contains a synchronized timeline and results list. Selecting an item in either view selects it in the other.
 
-Click **Search**. A summary will show how many items were found.
+**Show footprints** is enabled by default. Every valid Polygon or MultiPolygon geometry on the current result page is drawn as a temporary overlay; the selected item has a stronger highlight. Turning the option off, starting a new search, signing out, clearing results, or closing the dockpane removes the overlays. Footprints do not create layers or modify the ArcGIS project.
 
-## Browsing Results
+Each result can show its thumbnail, item and collection identifiers, acquisition time, resolution, cloud cover, AOI overlap, locational accuracy, licence, and assets. Select supported COG, GeoTIFF, or NetCDF assets and choose **Load Selected Assets**, or double-click the result.
 
-Results appear in the **Results** tab.
+## Commercial quotes and orders
 
-![Results tab with timeline](Images/results.png)
+Commercial controls depend on the detected provider:
 
-### Timeline
+| Provider | Licence | Product bundles | Additional fields |
+|---|---|---|---|
+| Airbus Optical | Required; nine provider options | Visual, General Use, Basic, Analytic | End-user country |
+| Airbus SAR | Required; three provider options | SSC, MGD, GEC, EEC | Orbit; resolution except SSC; projection except SSC/MGD |
+| Planet | No licence picker | Visual, General Use, Basic, Analytic | None |
 
-A scrollable timeline strip at the top shows thumbnail previews of each result arranged by acquisition date. Use the **Previous** / **Next** buttons or scroll to navigate. Clicking a thumbnail highlights the corresponding item in the list below.
+To purchase:
 
-### Results List
+1. Complete every visible provider field.
+2. Select **Get Quote** and review the returned value, units, and message.
+3. Accept the applicable licensing terms.
+4. Select **Place Order** and approve the final irreversible-purchase confirmation.
 
-Each result displays:
+A quote belongs to the exact item, AOI bounding box, provider, licence, bundle, country, and radar options used to obtain it. Changing any applicable input clears the quote and disables ordering until a new quote succeeds.
 
-- **Thumbnail** preview
-- **Item ID** and **Collection**
-- **Acquisition date**
-- **Resolution** (metres)
-- **Cloud cover** (%)
-- **AOI overlap** (%)
+If EODH reports that provider credentials are missing, link the Airbus or Planet account in Workspace settings. See [linked accounts guidance](https://docs.eodatahub.org.uk/Getting-Started/workspaces/linked-accounts/).
 
-### Selecting Assets
+## Workspace commercial data
 
-Click on a result to expand its asset list. Each asset shows its type (COG, GeoTIFF, etc.) and whether it can be loaded. Use the checkboxes to select the assets you want, then click **Load Selected Assets**.
+The Workspace tab displays commercial records for the signed-in workspace only. It does not switch workspaces or show members, workflow jobs, workflow outputs, or a raw object-store browser.
 
-You can also **double-click** a result to load its selected assets directly into the map.
-
-![Expanded asset list for a result](Images/assets.png)
-
-## Purchasing Commercial Imagery
-
-Commercial items are highlighted with a gold border. The purchase workflow depends on the provider:
-
-| Provider | Licence Required | Country Required |
-|----------|:----------------:|:----------------:|
-| Airbus Optical | Yes | Yes (ISO-3 code) |
-| Airbus SAR | Yes | No |
-| Planet | No | No |
-
-### Purchase Steps
-
-1. Select a licence from the dropdown (if required).
-2. Enter the end-user country code (if required).
-3. Click **Get Quote** to see the price.
-4. Review the price and currency displayed.
-5. Click **Place Order** and confirm the purchase.
-
-You can track order status in the **Workspace** tab.
-
-![Commercial item with quote](Images/commercial.png)
+Use the Provider and Status filters to review pending, processing, failed, and completed records. Backend messages, order identifiers, and timestamps are shown when available. Only completed records with supported assets show asset selection and **Load into map**. Use **Refresh** or **Retry** after a reported error.

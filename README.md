@@ -4,12 +4,12 @@ Search, filter, preview, and load datasets from the [UK EO Data Hub](https://eod
 
 ## Features
 
-- Browse STAC catalogs and collections
+- Browse recursively discovered collections under curated Public and Commercial catalogues
 - Search datasets by area of interest, date range, and cloud cover
-- Preview results with thumbnails and a timeline view
+- Preview results with thumbnails, a timeline, and temporary map footprints
 - Load COG/GeoTIFF assets directly into ArcGIS Pro as map layers
 - Purchase commercial satellite imagery (Airbus, Planet)
-- Manage workspace assets
+- Review commercial order records and load completed workspace assets
 
 ## Usage Guide
 
@@ -85,4 +85,4 @@ The plugin connects to the EODH API and supports three environments:
 | Staging     | https://staging.eodatahub.org.uk   |
 | Test        | https://test.eodatahub.org.uk      |
 
-Authentication requires an EODH username and API token. Credentials are encrypted and stored locally using Windows DPAPI.
+Authentication requires an EODH workspace name and **Workspace API key**. Paste the API Key, not its Token ID. The API key is encrypted and stored locally using Windows DPAPI; it is never written to application logs. Workspace API keys expire after at most 30 days and must be replaced through the [EODH workspace credentials page](https://docs.eodatahub.org.uk/Getting-Started/workspaces/workspace-credentials/).
