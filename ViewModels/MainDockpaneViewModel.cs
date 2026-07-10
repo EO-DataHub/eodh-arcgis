@@ -118,11 +118,13 @@ internal class MainDockpaneViewModel : DockPane
         IsLoggedIn = true;
         SelectedTabIndex = 0;
         _ = SearchVM.LoadCatalogsAsync();
+        _ = WorkspaceVM.InitializeAsync();
     }
 
     private void ExecuteLogout()
     {
         ResultsVM.ClearResults();
+        WorkspaceVM.Clear();
         _authService.ClearCredentials();
         IsLoggedIn = false;
         LoggedInUsername = string.Empty;

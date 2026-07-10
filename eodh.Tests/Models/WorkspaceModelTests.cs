@@ -1,116 +1,51 @@
-using Xunit;
+using System.Text.Json;
 using eodh.Models;
+using Xunit;
 
 namespace eodh.Tests.Models;
 
-/// <summary>
-/// Req 5: Workspace & Purchase — validates workspace model records can represent
-/// all roles, statuses, and purchase information for organisational data management.
-/// </summary>
 public class WorkspaceModelTests
 {
     [Theory]
-    [InlineData("owner")]
-    [InlineData("member")]
-    [InlineData("viewer")]
-    public void WorkspaceMember_CanRepresentAllRoles(string role)
+    [InlineData("completed", true)]
+    [InlineData("fulfilled", true)]
+    [InlineData("pending", false)]
+    [InlineData("processing", false)]
+    [InlineData("failed", false)]
+    public void CommercialRecord_RecognizesLoadableCompletionStates(string status, bool completed)
     {
-        var member = new WorkspaceMember("testuser", role);
+        var record = CreateRecord(new StacItemProperties(
+            null, null, null, null, null, null, null, null, null, OrderStatus: status));
 
-        Assert.Equal("testuser", member.Username);
-        Assert.Equal(role, member.Role);
-    }
-
-    [Theory]
-    [InlineData("available")]
-    [InlineData("pending")]
-    [InlineData("purchased")]
-    public void WorkspaceAsset_CanRepresentAllStatuses(string status)
-    {
-        var asset = new WorkspaceAsset("asset-1", "Test Asset", null, null, status, null);
-
-        Assert.Equal(status, asset.Status);
+        Assert.Equal(completed, record.IsCompleted);
+        Assert.Equal(status, record.Status);
     }
 
     [Fact]
-    public void QuoteRequest_CanOmitOptionalFields()
+    public void CommercialRecord_ReadsForwardCompatibleExtensionFields()
     {
-        var request = new QuoteRequest(null, null, null);
-
-        Assert.Null(request.Licence);
-        Assert.Null(request.Coordinates);
-    }
-
-    [Fact]
-    public void QuoteResponse_ContainsValueUnitsAndMessage()
-    {
-        var response = new QuoteResponse(450.00m, "EUR", "Minimum order");
-
-        Assert.Equal(450.00m, response.Value);
-        Assert.Equal("EUR", response.Units);
-        Assert.Equal("Minimum order", response.Message);
-    }
-
-    [Fact]
-    public void OrderRequest_ContainsAllAirbusOpticalFields()
-    {
-        var request = new OrderRequest("General Use",
-            [[[-1.5, 51.0], [0.5, 51.0], [0.5, 52.0], [-1.5, 52.0], [-1.5, 51.0]]],
-            "GB", "Standard", null);
-
-        Assert.Equal("Standard", request.Licence);
-        Assert.Equal("GB", request.EndUserCountry);
-        Assert.Equal("General Use", request.ProductBundle);
-        Assert.NotNull(request.Coordinates);
-        // Outer array has 1 ring, ring has 5 points
-        Assert.Single(request.Coordinates!);
-        Assert.Equal(5, request.Coordinates![0].Length);
-    }
-
-    [Fact]
-    public void OrderResult_RepresentsSuccessWithLocation()
-    {
-        var result = new OrderResult(true, "https://example.com/ordered-item", null);
-
-        Assert.True(result.Success);
-        Assert.NotNull(result.LocationUrl);
-        Assert.Null(result.ErrorMessage);
-    }
-
-    [Fact]
-    public void OrderResult_RepresentsFailureWithError()
-    {
-        var result = new OrderResult(false, null, "Insufficient funds");
-
-        Assert.False(result.Success);
-        Assert.Null(result.LocationUrl);
-        Assert.Equal("Insufficient funds", result.ErrorMessage);
-    }
-
-    [Fact]
-    public void WorkspaceAsset_PurchasedAtCanBeNull()
-    {
-        var asset = new WorkspaceAsset("asset-1", "Test", null, null, "available", null);
-
-        Assert.Null(asset.PurchasedAt);
-    }
-
-    [Fact]
-    public void WorkspaceInfo_ContainsMembersAndAssets()
-    {
-        var members = new List<WorkspaceMember>
+        using var status = JsonDocument.Parse("\"failed\"");
+        using var message = JsonDocument.Parse("\"Provider rejected request\"");
+        var properties = new StacItemProperties(
+            null, null, null, null, null, null, null, null, null)
         {
-            new("user1", "owner"),
-            new("user2", "member")
+            ExtensionData = new Dictionary<string, JsonElement>
+            {
+                ["order_status"] = status.RootElement.Clone(),
+                ["failure_message"] = message.RootElement.Clone()
+            }
         };
-        var assets = new List<WorkspaceAsset>
-        {
-            new("a1", "Asset 1", null, null, "available", null)
-        };
-        var workspace = new WorkspaceInfo("ws-1", "Test Workspace", "A test", members, assets);
 
-        Assert.Equal(2, workspace.Members.Count);
-        Assert.Single(workspace.Assets);
-        Assert.Equal("Test Workspace", workspace.Name);
+        var record = CreateRecord(properties);
+
+        Assert.Equal("failed", record.Status);
+        Assert.Equal("Provider rejected request", record.Message);
+    }
+
+    private static WorkspaceCommercialRecord CreateRecord(StacItemProperties properties)
+    {
+        var collection = new StacCollection("orders", "Orders", null, null, null, null, null);
+        var item = new StacItem("item", "orders", null, null, properties, null, null);
+        return new WorkspaceCommercialRecord("Airbus", collection, item);
     }
 }

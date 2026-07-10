@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace eodh.Models;
 
@@ -83,9 +84,17 @@ public record StacItemProperties(
     [property: JsonPropertyName("title")] string? Title,
     [property: JsonPropertyName("created")] string? Created,
     [property: JsonPropertyName("updated")] string? Updated,
-    [property: JsonPropertyName("accuracy:geometric_rmse")] double? GeometricRmse
+    [property: JsonPropertyName("accuracy:geometric_rmse")] double? GeometricRmse,
+    [property: JsonPropertyName("order:status")] string? OrderStatus = null,
+    [property: JsonPropertyName("order:id")] string? OrderId = null,
+    [property: JsonPropertyName("order:date")] string? OrderDate = null,
+    [property: JsonPropertyName("order:options")] JsonElement? OrderOptions = null,
+    [property: JsonPropertyName("order:message")] string? OrderMessage = null
 )
 {
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+
     /// <summary>
     /// Parse the datetime string to a DateTimeOffset.
     /// </summary>

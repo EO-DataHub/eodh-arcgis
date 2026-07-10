@@ -3,73 +3,132 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:converters="clr-namespace:eodh.Converters"
              mc:Ignorable="d">
 
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
     <DockPanel>
-        <!-- Header -->
-        <DockPanel DockPanel.Dock="Top" Margin="8,8,8,4">
-            <TextBlock Text="Workspaces" FontWeight="SemiBold" FontSize="14" />
-            <Button Content="Refresh"
+        <Grid DockPanel.Dock="Top" Margin="8,8,8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Commercial data" FontWeight="SemiBold" FontSize="14" />
+                <TextBlock FontSize="10" Opacity="0.65">
+                    <Run Text="Workspace: " />
+                    <Run Text="{Binding WorkspaceName}" FontWeight="SemiBold" />
+                </TextBlock>
+            </StackPanel>
+            <Button Grid.Column="1" Content="Refresh"
                     Command="{Binding RefreshCommand}"
-                    HorizontalAlignment="Right"
                     Padding="8,2" FontSize="11" />
-        </DockPanel>
+        </Grid>
 
-        <!-- Workspace selector -->
-        <ComboBox DockPanel.Dock="Top"
-                  ItemsSource="{Binding Workspaces}"
-                  DisplayMemberPath="Name"
-                  SelectedItem="{Binding SelectedWorkspace}"
-                  Margin="8,4" />
+        <Grid DockPanel.Dock="Top" Margin="8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Provider:" VerticalAlignment="Center" FontSize="10" Margin="0,0,4,0" />
+            <ComboBox Grid.Column="1" ItemsSource="{Binding ProviderOptions}"
+                      SelectedItem="{Binding SelectedProvider}" FontSize="10" Margin="0,0,8,0" />
+            <TextBlock Grid.Column="2" Text="Status:" VerticalAlignment="Center" FontSize="10" Margin="0,0,4,0" />
+            <ComboBox Grid.Column="3" ItemsSource="{Binding StatusOptions}"
+                      SelectedItem="{Binding SelectedStatus}" FontSize="10" />
+        </Grid>
 
-        <!-- Members list -->
-        <Expander DockPanel.Dock="Top"
-                  Header="Members" Margin="8,4"
-                  IsExpanded="False">
-            <ItemsControl ItemsSource="{Binding Members}"
-                          Margin="8,4">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal" Margin="0,2">
-                            <TextBlock Text="{Binding Username}" FontWeight="SemiBold" />
-                            <TextBlock Text="{Binding Role, StringFormat=' ({0})'}"
-                                       Opacity="0.6" />
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </Expander>
+        <ProgressBar DockPanel.Dock="Top" IsIndeterminate="True"
+                     Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+                     Height="3" Margin="8,2" />
 
-        <!-- Assets list -->
-        <TextBlock DockPanel.Dock="Top"
-                   Text="Assets" FontWeight="SemiBold"
-                   Margin="8,8,8,4" />
+        <StackPanel DockPanel.Dock="Top" Margin="8,6"
+                    Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="Red"
+                       TextWrapping="Wrap" FontSize="11" Margin="0,0,0,5" />
+            <Button Content="Retry" Command="{Binding RefreshCommand}"
+                    HorizontalAlignment="Left" Padding="8,2" />
+        </StackPanel>
 
-        <ListView ItemsSource="{Binding Assets}"
-                  Margin="8,0"
-                  BorderThickness="0">
+        <TextBlock Text="No commercial order records were found in this workspace."
+                   Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}"
+                   HorizontalAlignment="Center" TextAlignment="Center"
+                   TextWrapping="Wrap" Opacity="0.65" Margin="18,24" />
+
+        <ListView ItemsSource="{Binding Records}"
+                  Visibility="{Binding HasRecords, Converter={StaticResource BoolToVis}}"
+                  Margin="8,0" BorderThickness="0"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                </Style>
+            </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Border Padding="4,6" BorderThickness="0,0,0,1"
-                            BorderBrush="Gray">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                    <Border Padding="6" BorderThickness="0,0,0,1" BorderBrush="Gray">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold" FontSize="11">
+                                        <Run Text="{Binding Provider}" />
+                                        <Run Text=" — " />
+                                        <Run Text="{Binding Collection}" />
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding ItemId}" FontSize="10"
+                                               TextTrimming="CharacterEllipsis" Opacity="0.7" />
+                                </StackPanel>
+                                <Border Grid.Column="1" Background="#203080C0" CornerRadius="3"
+                                        Padding="5,2" VerticalAlignment="Top">
+                                    <TextBlock Text="{Binding Status}" FontSize="10" FontWeight="SemiBold" />
+                                </Border>
+                            </Grid>
 
-                            <StackPanel>
-                                <TextBlock Text="{Binding Name}"
-                                           FontWeight="SemiBold" FontSize="11" />
-                                <TextBlock Text="{Binding Status}"
-                                           FontSize="10" Opacity="0.6" />
+                            <TextBlock Text="{Binding Message}" Foreground="DarkGoldenrod"
+                                       TextWrapping="Wrap" FontSize="10" Margin="0,3,0,0" />
+                            <WrapPanel Margin="0,2,0,0">
+                                <TextBlock Text="{Binding OrderId, StringFormat='Order: {0}'}"
+                                           FontSize="9" Opacity="0.6" Margin="0,0,8,0" />
+                                <TextBlock Text="{Binding Created, StringFormat='Created: {0}'}"
+                                           FontSize="9" Opacity="0.6" Margin="0,0,8,0" />
+                                <TextBlock Text="{Binding Updated, StringFormat='Updated: {0}'}"
+                                           FontSize="9" Opacity="0.6" />
+                            </WrapPanel>
+
+                            <StackPanel Visibility="{Binding CanLoadIntoMap, Converter={StaticResource BoolToVis}}"
+                                        Margin="0,5,0,0">
+                                <ItemsControl ItemsSource="{Binding Assets}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                      IsEnabled="{Binding IsLoadable}"
+                                                      FontSize="10" Margin="0,1">
+                                                <TextBlock>
+                                                    <Run Text="{Binding DisplayName}" />
+                                                    <Run Text=" (" /><Run Text="{Binding FileType}" /><Run Text=")" />
+                                                </TextBlock>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <Button Content="Load into map" Command="{Binding LoadCommand}"
+                                            Padding="7,2" FontSize="10" />
+                                    <ProgressBar IsIndeterminate="True"
+                                                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+                                                 Width="60" Height="2" Margin="8,0,0,0" />
+                                </StackPanel>
                             </StackPanel>
-
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding PurchasedAt, StringFormat='{}{0:yyyy-MM-dd}'}"
-                                       FontSize="10" Opacity="0.5"
-                                       VerticalAlignment="Center" />
-                        </Grid>
+                        </StackPanel>
                     </Border>
                 </DataTemplate>
             </ListView.ItemTemplate>
