@@ -285,6 +285,41 @@ public class ResultItemViewModelTests
     }
 
     [Fact]
+    public void ConfiguredCollection_SelectsOnlyItsDefaultAsset()
+    {
+        var item = new StacItem("test", "sentinel2_ard", null, null, null,
+            new Dictionary<string, StacAsset>
+            {
+                ["cog"] = new("https://example.com/cog.tif", "image/tiff", "COG", ["data"], null),
+                ["cloud"] = new("https://example.com/cloud.tif", "image/tiff", "Cloud", ["data"], null)
+            }, null);
+
+        var vm = CreateItemVm(item);
+
+        Assert.True(vm.HasDefaultAssetSelection);
+        Assert.True(vm.AllAssets.Single(asset => asset.Key == "cog").IsSelected);
+        Assert.False(vm.AllAssets.Single(asset => asset.Key == "cloud").IsSelected);
+    }
+
+    [Fact]
+    public void UnconfiguredCollection_DoubleClickExpandsUnselectedAssetList()
+    {
+        var item = new StacItem("test", "unknown", null, null, null,
+            new Dictionary<string, StacAsset>
+            {
+                ["data"] = new("https://example.com/data.tif", "image/tiff", "Data", ["data"], null)
+            }, null);
+        var vm = CreateItemVm(item);
+
+        vm.DefaultActionCommand.Execute(null);
+
+        Assert.False(vm.HasDefaultAssetSelection);
+        Assert.False(vm.AllAssets.Single().IsSelected);
+        Assert.True(vm.IsAssetsPopupOpen);
+        Assert.False(vm.LoadCommand.CanExecute(null));
+    }
+
+    [Fact]
     public void IsCommercial_True_WhenSelfLinkIsCommercial()
     {
         var item = new StacItem("test", "airbus_phr_data", null, null, null, null,

@@ -106,4 +106,24 @@ public class AssetSelectorTests
 
         Assert.Empty(result);
     }
+
+    [Theory]
+    [InlineData("S2_ARD", "cog")]
+    [InlineData("sentinel2_ard", "cog")]
+    [InlineData("S1_ARD", "data")]
+    [InlineData("EOCIS CHUK LAI", "data")]
+    [InlineData("eocis-chuk-fpar", "data")]
+    [InlineData("EOCIS CHUK Landcover", "data")]
+    [InlineData("EOCIS CHUK Land Class", "data_lccs_class")]
+    [InlineData("EOCIS CHUK Elevation", "data")]
+    public void GetDefaultAssetKeys_MapsConfiguredCollections(string collection, string expectedKey)
+    {
+        Assert.Equal([expectedKey], AssetSelector.GetDefaultAssetKeys(collection));
+    }
+
+    [Fact]
+    public void GetDefaultAssetKeys_ReturnsEmptyForUnconfiguredCollection()
+    {
+        Assert.Empty(AssetSelector.GetDefaultAssetKeys("unknown"));
+    }
 }

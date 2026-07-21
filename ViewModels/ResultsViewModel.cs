@@ -241,6 +241,8 @@ internal class ResultItemViewModel : PropertyChangedBase
         }
 
         // Build asset detail list
+        var defaultAssetKeys = AssetSelector.GetDefaultAssetKeys(Item.Collection)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         AllAssets = (Item.Assets ?? new Dictionary<string, StacAsset>())
             .Select(kv => new AssetDetailViewModel
             {
@@ -248,11 +250,23 @@ internal class ResultItemViewModel : PropertyChangedBase
                 DisplayName = kv.Value.Title ?? kv.Key,
                 FileType = kv.Value.FileType,
                 IsLoadable = kv.Value.IsLoadable,
-                IsSelected = kv.Value.IsLoadable
+                IsSelected = kv.Value.IsLoadable && defaultAssetKeys.Contains(kv.Key)
             })
             .ToList();
+        HasDefaultAssetSelection = AllAssets.Any(asset => asset.IsSelected);
 
-        LoadCommand = new RelayCommand(() => _ = LoadIntoMapAsync());
+        LoadCommand = new RelayCommand(
+            () => _ = LoadIntoMapAsync(),
+            () => AllAssets.Any(asset => asset.IsLoadable && asset.IsSelected));
+        foreach (var asset in AllAssets)
+        {
+            asset.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(AssetDetailViewModel.IsSelected))
+                    ((RelayCommand)LoadCommand).RaiseCanExecuteChanged();
+            };
+        }
+        DefaultActionCommand = new RelayCommand(ExecuteDefaultAction);
         ToggleAssetsPopupCommand = new RelayCommand(() => IsAssetsPopupOpen = !IsAssetsPopupOpen);
         GetQuoteCommand = new RelayCommand(ExecuteGetQuote, CanGetQuote);
         PlaceOrderCommand = new RelayCommand(ExecutePlaceOrder, CanPlaceOrder);
@@ -296,6 +310,8 @@ internal class ResultItemViewModel : PropertyChangedBase
     }
 
     public ICommand LoadCommand { get; }
+    public ICommand DefaultActionCommand { get; }
+    public bool HasDefaultAssetSelection { get; }
 
     // Asset popup
     public bool IsAssetsPopupOpen
@@ -465,6 +481,14 @@ internal class ResultItemViewModel : PropertyChangedBase
     #endregion
 
     #region Private Methods
+
+    private void ExecuteDefaultAction()
+    {
+        if (HasDefaultAssetSelection)
+            _ = LoadIntoMapAsync();
+        else
+            IsAssetsPopupOpen = true;
+    }
 
     private bool CanGetQuote() =>
         IsCommercial && !_isQuoting && !_isOrdering && Item.SelfLink != null &&

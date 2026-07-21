@@ -62,7 +62,7 @@
                             Cursor="Hand">
                         <Border.InputBindings>
                             <MouseBinding MouseAction="LeftDoubleClick"
-                                          Command="{Binding LoadCommand}" />
+                                          Command="{Binding DefaultActionCommand}" />
                         </Border.InputBindings>
 
                         <Grid>

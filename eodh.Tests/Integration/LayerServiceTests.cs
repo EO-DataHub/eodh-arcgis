@@ -149,9 +149,10 @@ public class LayerServiceTests
     }
 
     [Fact]
-    public async Task DoubleClickResult_LoadsAllLoadableAssets()
+    public async Task LoadableAssets_CanLoadIndependently()
     {
-        // Tests that all loadable assets can be loaded independently
+        // Asset choice is handled by ResultItemViewModel; the layer service
+        // should still be able to load each selected asset independently.
         var assets = new Dictionary<string, StacAsset>
         {
             ["thumbnail"] = new("https://example.com/thumb.jpg", "image/jpeg", "Thumb", ["thumbnail"], null),
