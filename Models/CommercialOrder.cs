@@ -7,7 +7,8 @@ public enum CommercialProvider
     Unknown,
     AirbusOptical,
     AirbusSar,
-    Planet
+    Planet,
+    OpenCosmos
 }
 
 /// <summary>
@@ -24,6 +25,7 @@ public sealed record CommercialProviderCapabilities(
     IReadOnlyList<string> ProjectionOptions)
 {
     public bool RequiresLicence => LicenceOptions.Count > 0;
+    public bool RequiresProductBundle => ProductBundles.Count > 0;
     public bool HasRadarOptions => OrbitOptions.Count > 0;
 
     public bool RequiresResolutionVariant(string? bundle) =>
@@ -51,7 +53,7 @@ public sealed record RadarOptions(
     [property: JsonPropertyName("projection")] string? Projection);
 
 public sealed record OrderRequest(
-    [property: JsonPropertyName("productBundle")] string ProductBundle,
+    [property: JsonPropertyName("productBundle")] string? ProductBundle,
     [property: JsonPropertyName("coordinates")] double[][][]? Coordinates,
     [property: JsonPropertyName("endUserCountry")] string? EndUserCountry,
     [property: JsonPropertyName("licence")] string? Licence,

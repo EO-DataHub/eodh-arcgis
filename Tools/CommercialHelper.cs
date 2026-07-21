@@ -55,6 +55,15 @@ internal static class CommercialHelper
                 ProductBundles: OpticalBundles,
                 OrbitOptions: [],
                 ResolutionVariantOptions: [],
+                ProjectionOptions: []),
+            [CommercialProvider.OpenCosmos] = new(
+                CommercialProvider.OpenCosmos,
+                SupportsCoordinates: true,
+                RequiresEndUserCountry: false,
+                LicenceOptions: [],
+                ProductBundles: [],
+                OrbitOptions: [],
+                ResolutionVariantOptions: [],
                 ProjectionOptions: [])
         };
 
@@ -78,6 +87,7 @@ internal static class CommercialHelper
             "airbus" when IsSarCollection(item) => CommercialProvider.AirbusSar,
             "airbus" => CommercialProvider.AirbusOptical,
             "planet" => CommercialProvider.Planet,
+            "opencosmos" or "open-cosmos" or "open_cosmos" => CommercialProvider.OpenCosmos,
             _ => CommercialProvider.Unknown
         };
     }

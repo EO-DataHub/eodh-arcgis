@@ -377,6 +377,19 @@ public class CommercialResultItemViewModelTests
     }
 
     [Fact]
+    public void OpenCosmos_HidesBundlePickerAndAllowsQuote()
+    {
+        var handler = new FixtureHttpHandler();
+        var vm = CreateCommercialVm(
+            "open-cosmos", "accelerator", new CommercialOrderService(new TestAuthService(handler)));
+
+        Assert.Equal(CommercialProvider.OpenCosmos, vm.Provider);
+        Assert.False(vm.HasProductBundleOptions);
+        Assert.Null(vm.SelectedProductBundle);
+        Assert.True(vm.GetQuoteCommand.CanExecute(null));
+    }
+
+    [Fact]
     public async Task ChangingCommercialInput_InvalidatesSuccessfulQuote()
     {
         var handler = new FixtureHttpHandler();

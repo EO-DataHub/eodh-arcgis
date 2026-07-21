@@ -11,7 +11,7 @@ public class CommercialHelperTests
             [new StacLink("self", selfLink, null, null)]);
 
     [Fact]
-    public void DetectProvider_DistinguishesAirbusOpticalSarAndPlanet()
+    public void DetectProvider_DistinguishesSupportedCommercialProviders()
     {
         Assert.Equal(CommercialProvider.AirbusOptical, CommercialHelper.DetectProvider(MakeItem(
             "https://eodatahub.org.uk/api/catalogue/stac/catalogs/commercial/catalogs/airbus/collections/phr/items/1",
@@ -22,6 +22,9 @@ public class CommercialHelperTests
         Assert.Equal(CommercialProvider.Planet, CommercialHelper.DetectProvider(MakeItem(
             "https://eodatahub.org.uk/api/catalogue/stac/catalogs/commercial/catalogs/planet/collections/PSScene/items/1",
             "PSScene")));
+        Assert.Equal(CommercialProvider.OpenCosmos, CommercialHelper.DetectProvider(MakeItem(
+            "https://eodatahub.org.uk/api/catalogue/stac/catalogs/commercial/catalogs/open-cosmos/collections/accelerator/items/1",
+            "accelerator")));
     }
 
     [Fact]
@@ -73,5 +76,15 @@ public class CommercialHelperTests
         Assert.Empty(capabilities.LicenceOptions);
         Assert.False(capabilities.RequiresLicence);
         Assert.Equal(["Visual", "General Use", "Basic", "Analytic"], capabilities.ProductBundles);
+    }
+
+    [Fact]
+    public void OpenCosmosCapabilities_HaveNoProductBundles()
+    {
+        var capabilities = CommercialHelper.GetCapabilities(CommercialProvider.OpenCosmos);
+
+        Assert.True(capabilities.SupportsCoordinates);
+        Assert.False(capabilities.RequiresProductBundle);
+        Assert.Empty(capabilities.ProductBundles);
     }
 }

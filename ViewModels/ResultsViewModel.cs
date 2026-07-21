@@ -317,6 +317,7 @@ internal class ResultItemViewModel : PropertyChangedBase
     public IReadOnlyList<string> ResolutionVariantOptions { get; }
     public IReadOnlyList<string> ProjectionOptions { get; }
     public bool HasLicenceOptions => LicenceOptions.Count > 0;
+    public bool HasProductBundleOptions => ProductBundleOptions.Count > 0;
     public bool RequiresEndUserCountry => Capabilities.RequiresEndUserCountry;
     public bool HasRadarOptions => Capabilities.HasRadarOptions;
     public bool RequiresResolutionVariant =>
@@ -537,7 +538,7 @@ internal class ResultItemViewModel : PropertyChangedBase
             var licence = Capabilities.RequiresLicence ? _selectedLicence : null;
             var endUserCountry = Capabilities.RequiresEndUserCountry ? _endUserCountry : null;
             var request = new OrderRequest(
-                _selectedProductBundle!,
+                Capabilities.RequiresProductBundle ? _selectedProductBundle : null,
                 coordinates,
                 endUserCountry,
                 licence,
@@ -561,9 +562,12 @@ internal class ResultItemViewModel : PropertyChangedBase
 
     private bool HasValidCommercialInputs()
     {
-        if (Provider == CommercialProvider.Unknown ||
-            string.IsNullOrWhiteSpace(_selectedProductBundle) ||
-            !ProductBundleOptions.Contains(_selectedProductBundle))
+        if (Provider == CommercialProvider.Unknown)
+            return false;
+
+        if (Capabilities.RequiresProductBundle &&
+            (string.IsNullOrWhiteSpace(_selectedProductBundle) ||
+             !ProductBundleOptions.Contains(_selectedProductBundle)))
             return false;
 
         if (Capabilities.RequiresLicence &&

@@ -229,8 +229,9 @@
                                                   FontSize="10" MinWidth="120" />
                                     </StackPanel>
 
-                                    <!-- Product bundle (required by every provider) -->
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <!-- Product bundle (provider-dependent) -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                                                Visibility="{Binding HasProductBundleOptions, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="Bundle:" FontSize="10"
                                                    VerticalAlignment="Center" Margin="0,0,4,0" />
                                         <ComboBox ItemsSource="{Binding ProductBundleOptions}"
