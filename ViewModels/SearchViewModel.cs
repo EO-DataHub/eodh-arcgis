@@ -32,6 +32,7 @@ internal class SearchViewModel : PropertyChangedBase
     private DateTime? _endDate;
     private double _maxCloudCover = 100;
     private double[]? _aoiBbox;
+    private bool _aoiFromCollection;
     private IDisposable? _aoiOverlay;
     private string _aoiDescription = "No area selected";
     private bool _isSearching;
@@ -44,7 +45,7 @@ internal class SearchViewModel : PropertyChangedBase
         _onSearchCompleted = onSearchCompleted;
 
         _endDate = DateTime.Today;
-        _startDate = DateTime.Today.AddMonths(-2);
+        _startDate = DateTime.Today.AddMonths(-1);
 
         SearchCommand = new RelayCommand(ExecuteSearch, CanSearch);
         DrawAoiCommand = new RelayCommand(ExecuteDrawAoi);
@@ -84,7 +85,10 @@ internal class SearchViewModel : PropertyChangedBase
         set
         {
             if (SetProperty(ref _selectedCollection, value))
+            {
+                ApplyCollectionMetadata(value?.Collection);
                 NotifyCanSearchChanged();
+            }
         }
     }
 
@@ -168,6 +172,7 @@ internal class SearchViewModel : PropertyChangedBase
     internal void SetAoiFromPolygon(Envelope envelope)
     {
         _aoiBbox = [envelope.XMin, envelope.YMin, envelope.XMax, envelope.YMax];
+        _aoiFromCollection = false;
 
         // Set observable properties directly — safe from any thread for test assertions
         // and WPF binding engine picks up PropertyChanged regardless of source thread.
@@ -267,6 +272,7 @@ internal class SearchViewModel : PropertyChangedBase
         _aoiOverlay?.Dispose();
         _aoiOverlay = null;
         _aoiBbox = null;
+        _aoiFromCollection = false;
         AoiDescription = "No area selected";
         NotifyAoiCommandsChanged();
     }
@@ -370,6 +376,7 @@ internal class SearchViewModel : PropertyChangedBase
     private void SetImportedAoi(double[] bbox, string? sourceName = null)
     {
         _aoiBbox = bbox;
+        _aoiFromCollection = false;
         var source = string.IsNullOrWhiteSpace(sourceName) ? string.Empty : $" ({sourceName})";
         AoiDescription = $"Imported AOI{source}: {bbox[0]:F2}, {bbox[1]:F2} to {bbox[2]:F2}, {bbox[3]:F2}";
         NotifyAoiCommandsChanged();
@@ -462,6 +469,7 @@ internal class SearchViewModel : PropertyChangedBase
             if (bbox != null)
             {
                 _aoiBbox = bbox;
+                _aoiFromCollection = false;
                 AoiDescription = $"Map extent: {bbox[0]:F2}, {bbox[1]:F2} to {bbox[2]:F2}, {bbox[3]:F2}";
                 NotifyAoiCommandsChanged();
                 _ = ShowAoiOnMap();
@@ -471,6 +479,71 @@ internal class SearchViewModel : PropertyChangedBase
         {
             ResultSummary = $"Failed to get map extent: {ex.Message}";
         }
+    }
+
+    private void ApplyCollectionMetadata(StacCollection? collection)
+    {
+        var today = DateTime.Today;
+        var fallbackStart = today.AddMonths(-1);
+        var intervals = collection?.Extent?.Temporal?.Interval;
+        var starts = intervals?
+            .Select(interval => ParseDate(interval.ElementAtOrDefault(0)))
+            .Where(date => date.HasValue)
+            .Select(date => date!.Value)
+            .ToList() ?? [];
+        var ends = intervals?
+            .Select(interval => ParseDate(interval.ElementAtOrDefault(1)))
+            .Where(date => date.HasValue)
+            .Select(date => date!.Value)
+            .ToList() ?? [];
+
+        StartDate = starts.Count > 0 ? starts.Min() : fallbackStart;
+        EndDate = ends.Count > 0 ? ends.Max() : today;
+
+        var collectionBbox = CombineCollectionBboxes(collection?.Extent?.Spatial?.Bbox);
+        if (collectionBbox != null)
+        {
+            _aoiBbox = collectionBbox;
+            _aoiFromCollection = true;
+            AoiDescription =
+                $"Collection extent: {collectionBbox[0]:F2}, {collectionBbox[1]:F2} to " +
+                $"{collectionBbox[2]:F2}, {collectionBbox[3]:F2}";
+            NotifyAoiCommandsChanged();
+            _ = ShowAoiOnMap();
+        }
+        else if (_aoiFromCollection)
+        {
+            _aoiOverlay?.Dispose();
+            _aoiOverlay = null;
+            _aoiBbox = null;
+            _aoiFromCollection = false;
+            AoiDescription = "No area selected";
+            NotifyAoiCommandsChanged();
+        }
+    }
+
+    private static DateTime? ParseDate(string? value) =>
+        DateTimeOffset.TryParse(value, out var parsed) ? parsed.Date : null;
+
+    private static double[]? CombineCollectionBboxes(List<List<double>>? bboxes)
+    {
+        double[]? combined = null;
+        foreach (var bbox in bboxes ?? [])
+        {
+            double[]? extent = bbox.Count switch
+            {
+                >= 6 => [bbox[0], bbox[1], bbox[3], bbox[4]],
+                >= 4 => [bbox[0], bbox[1], bbox[2], bbox[3]],
+                _ => null
+            };
+            if (extent == null || extent.Any(value => !double.IsFinite(value)) ||
+                extent[0] > extent[2] || extent[1] > extent[3])
+                continue;
+
+            combined = CombineExtents(combined, extent);
+        }
+
+        return combined;
     }
 
     private async Task ShowAoiOnMap()

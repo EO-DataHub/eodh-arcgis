@@ -50,6 +50,31 @@ public class SearchViewModelTests
     }
 
     [Fact]
+    public void SelectedCollection_PrefillsPublishedSpatialAndTemporalExtent()
+    {
+        var (vm, _) = CreateVm();
+        vm.SelectedCollection = CreateEntry(new StacExtent(
+            new StacSpatialExtent([[-3, 50, 2, 55]]),
+            new StacTemporalExtent([["2024-01-02T00:00:00Z", "2025-03-04T23:59:59Z"]])));
+
+        Assert.Equal(new DateTime(2024, 1, 2), vm.StartDate);
+        Assert.Equal(new DateTime(2025, 3, 4), vm.EndDate);
+        Assert.Contains("Collection extent: -3.00, 50.00 to 2.00, 55.00", vm.AoiDescription);
+        Assert.True(vm.SearchCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public void SelectedCollection_DefaultsMissingDatesToLastMonthThroughToday()
+    {
+        var (vm, _) = CreateVm();
+
+        vm.SelectedCollection = CreateEntry();
+
+        Assert.Equal(DateTime.Today.AddMonths(-1), vm.StartDate);
+        Assert.Equal(DateTime.Today, vm.EndDate);
+    }
+
+    [Fact]
     public async Task MaxCloudCover100_SendsNoCloudPredicate()
     {
         var (vm, handler) = CreateVm();
@@ -125,12 +150,12 @@ public class SearchViewModelTests
             """);
     }
 
-    private static CatalogCollectionEntry CreateEntry() => new(
+    private static CatalogCollectionEntry CreateEntry(StacExtent? extent = null) => new(
         CatalogRoot.Public,
         "Provider",
         "https://eodatahub.org.uk/provider",
         "https://eodatahub.org.uk/provider/search",
-        new StacCollection("collection", "Collection title", null, null, null, null, null));
+        new StacCollection("collection", "Collection title", null, null, null, extent, null));
 
     private static Envelope CreateEnvelope() => EnvelopeBuilderEx.CreateEnvelope(
         new Coordinate2D(-1.5, 51), new Coordinate2D(0.5, 52));
