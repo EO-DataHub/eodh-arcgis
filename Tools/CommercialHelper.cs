@@ -35,7 +35,7 @@ internal static class CommercialHelper
                 ProjectionOptions: []),
             [CommercialProvider.AirbusSar] = new(
                 CommercialProvider.AirbusSar,
-                SupportsCoordinates: false,
+                SupportsCoordinates: true,
                 RequiresEndUserCountry: false,
                 LicenceOptions:
                 [

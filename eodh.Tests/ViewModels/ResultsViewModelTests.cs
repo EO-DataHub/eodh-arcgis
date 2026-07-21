@@ -377,6 +377,21 @@ public class CommercialResultItemViewModelTests
     }
 
     [Fact]
+    public async Task AirbusSar_QuoteIncludesAoiCropCoordinates()
+    {
+        var handler = new FixtureHttpHandler();
+        handler.RegisterJson("/quote", "{\"value\":100,\"units\":\"EUR\"}");
+        var vm = CreateCommercialVm(
+            "airbus", "airbus_sar_data",
+            new CommercialOrderService(new TestAuthService(handler)));
+
+        vm.GetQuoteCommand.Execute(null);
+        await Task.Delay(200);
+
+        Assert.Contains("\"coordinates\"", Assert.Single(handler.Requests).Body);
+    }
+
+    [Fact]
     public void OpenCosmos_HidesBundlePickerAndAllowsQuote()
     {
         var handler = new FixtureHttpHandler();

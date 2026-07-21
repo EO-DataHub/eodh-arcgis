@@ -57,7 +57,7 @@ public class CommercialHelperTests
     {
         var capabilities = CommercialHelper.GetCapabilities(CommercialProvider.AirbusSar);
 
-        Assert.False(capabilities.SupportsCoordinates);
+        Assert.True(capabilities.SupportsCoordinates);
         Assert.Equal(3, capabilities.LicenceOptions.Count);
         Assert.Equal(["SSC", "MGD", "GEC", "EEC"], capabilities.ProductBundles);
         Assert.Equal(["rapid", "science"], capabilities.OrbitOptions);
