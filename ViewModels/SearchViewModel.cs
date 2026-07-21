@@ -68,9 +68,14 @@ internal class SearchViewModel : PropertyChangedBase
         set
         {
             if (SetProperty(ref _selectedCatalog, value))
+            {
+                NotifyPropertyChanged(nameof(IsCommercialCatalog));
                 _ = LoadCollectionsAsync();
+            }
         }
     }
+
+    public bool IsCommercialCatalog => SelectedCatalog == CatalogRoot.Commercial;
 
     public CatalogCollectionEntry? SelectedCollection
     {

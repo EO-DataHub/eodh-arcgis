@@ -38,6 +38,18 @@ public class SearchViewModelTests
     }
 
     [Fact]
+    public void IsCommercialCatalog_TracksSelectedCatalog()
+    {
+        var (vm, _) = CreateVm();
+
+        vm.SelectedCatalog = CatalogRoot.Public;
+        Assert.False(vm.IsCommercialCatalog);
+
+        vm.SelectedCatalog = CatalogRoot.Commercial;
+        Assert.True(vm.IsCommercialCatalog);
+    }
+
+    [Fact]
     public async Task MaxCloudCover100_SendsNoCloudPredicate()
     {
         var (vm, handler) = CreateVm();

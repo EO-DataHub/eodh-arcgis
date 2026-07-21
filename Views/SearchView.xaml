@@ -18,7 +18,12 @@
             <ComboBox ItemsSource="{Binding Catalogs}"
                       DisplayMemberPath="DisplayName"
                       SelectedItem="{Binding SelectedCatalog}"
-                      Margin="0,0,0,12" />
+                      Margin="0,0,0,4" />
+            <TextBlock FontSize="10" Margin="0,0,0,12"
+                       Visibility="{Binding IsCommercialCatalog, Converter={StaticResource BoolToVis}}">
+                <Hyperlink NavigateUri="https://docs.eodatahub.org.uk/Analysts/commercial/ordering-commercial-data/#understanding-the-ordering-options"
+                           RequestNavigate="CommercialOptionsLink_RequestNavigate">Learn about commercial bundles and licences</Hyperlink>
+            </TextBlock>
 
             <!-- Collection Selection -->
             <TextBlock Text="Collection" FontWeight="SemiBold" Margin="0,0,0,4" />
