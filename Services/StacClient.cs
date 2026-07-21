@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -17,6 +18,8 @@ public class StacClient
     };
 
     private readonly AuthService _authService;
+    private readonly ConcurrentDictionary<string, Lazy<Task<bool>>> _cloudCoverCapabilityCache =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public StacClient(AuthService authService)
     {
@@ -101,12 +104,47 @@ public class StacClient
         CatalogCollectionEntry entry,
         CancellationToken ct = default)
     {
-        var sample = await SearchAsync(entry, new SearchFilters
+        var key = entry.Identity;
+        var cachedProbe = _cloudCoverCapabilityCache.GetOrAdd(
+            key,
+            _ => new Lazy<Task<bool>>(
+                () => ProbeCloudCoverCapabilityAsync(entry),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+        try
+        {
+            return await cachedProbe.Value.WaitAsync(ct);
+        }
+        catch
+        {
+            _cloudCoverCapabilityCache.TryRemove(key, out _);
+            throw;
+        }
+    }
+
+    private async Task<bool> ProbeCloudCoverCapabilityAsync(CatalogCollectionEntry entry)
+    {
+        using var client = _authService.CreateHttpClient();
+        var body = new SearchFilters
         {
             Collections = [entry.Collection.Id],
             Limit = 1
-        }, ct);
-        return sample.Items.Any(item => item.Properties?.CloudCover.HasValue == true);
+        }.ToSearchParams();
+        var jsonBody = JsonSerializer.Serialize(body, JsonOptions);
+        using var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        using var response = await client.PostAsync(entry.SearchUrl, content);
+        await ApiResponse.EnsureSuccessAsync(
+            response, "cloud-cover capability detection", default, _authService.ApiToken);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+        if (!document.RootElement.TryGetProperty("features", out var features) ||
+            features.ValueKind != JsonValueKind.Array)
+            return false;
+
+        return features.EnumerateArray().Any(item =>
+            item.TryGetProperty("properties", out var properties) &&
+            properties.ValueKind == JsonValueKind.Object &&
+            properties.TryGetProperty("eo:cloud_cover", out _));
     }
 
     /// <summary>

@@ -106,12 +106,12 @@ public class StacClientTests
     }
 
     [Fact]
-    public async Task CollectionHasCloudCoverAsync_ProbesOneCollectionItem()
+    public async Task CollectionHasCloudCoverAsync_DetectsPropertyPresenceAndCachesResult()
     {
         var (client, handler) = CreateClient();
         handler.RegisterJson("/provider/search", """
             {"type":"FeatureCollection","features":[
-              {"id":"sample","properties":{"eo:cloud_cover":17}}
+              {"id":"sample","properties":{"eo:cloud_cover":null}}
             ],"links":[]}
             """);
         var entry = new CatalogCollectionEntry(
@@ -120,8 +120,11 @@ public class StacClientTests
             new StacCollection("cloudy", "Cloudy", null, null, null, null, null));
 
         Assert.True(await client.CollectionHasCloudCoverAsync(entry));
-        Assert.Contains("\"limit\":1", handler.Requests.Single().Body);
-        Assert.Contains("\"cloudy\"", handler.Requests.Single().Body);
+        Assert.True(await client.CollectionHasCloudCoverAsync(entry));
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"limit\":1", request.Body);
+        Assert.Contains("\"cloudy\"", request.Body);
     }
 
     [Fact]
