@@ -424,7 +424,7 @@ public class CommercialResultItemViewModelTests
     }
 
     [Fact]
-    public async Task PlaceOrder_RequiresFreshQuoteAndTermsAcceptance()
+    public async Task Purchase_IsActiveImmediatelyAfterFreshQuote()
     {
         var handler = new FixtureHttpHandler();
         handler.RegisterJson("/quote", "{\"value\":100,\"units\":\"EUR\"}");
@@ -434,9 +434,6 @@ public class CommercialResultItemViewModelTests
 
         vm.GetQuoteCommand.Execute(null);
         await Task.Delay(200);
-        Assert.False(vm.PlaceOrderCommand.CanExecute(null));
-
-        vm.LicensingTermsAccepted = true;
 
         Assert.True(vm.PlaceOrderCommand.CanExecute(null));
         Assert.DoesNotContain(handler.Requests, request => request.Url.EndsWith("/order"));

@@ -296,15 +296,12 @@
 
                                     <!-- Order button (visible after quote) -->
                                     <StackPanel Visibility="{Binding HasQuote, Converter={StaticResource BoolToVis}}">
-                                        <CheckBox IsChecked="{Binding LicensingTermsAccepted}"
-                                                  Content="I accept the applicable licensing terms"
-                                                  FontSize="10" Margin="0,0,0,4" />
                                         <TextBlock FontSize="10" Margin="0,0,0,4">
                                             <Hyperlink NavigateUri="https://docs.eodatahub.org.uk/Getting-Started/workspaces/linked-accounts/"
                                                        RequestNavigate="CommercialHelpLink_RequestNavigate">Provider account and licensing guidance</Hyperlink>
                                         </TextBlock>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                            <Button Content="Place Order"
+                                            <Button Content="Purchase"
                                                     Command="{Binding PlaceOrderCommand}"
                                                     Padding="8,2" FontSize="10" />
                                             <ProgressBar IsIndeterminate="True"

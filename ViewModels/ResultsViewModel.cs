@@ -204,7 +204,6 @@ internal class ResultItemViewModel : PropertyChangedBase
     private string? _selectedOrbit;
     private string? _selectedResolutionVariant;
     private string? _selectedProjection;
-    private bool _licensingTermsAccepted;
     private string? _purchaseStatus;
     private string? _purchaseError;
 
@@ -368,16 +367,6 @@ internal class ResultItemViewModel : PropertyChangedBase
         set => SetCommercialInput(ref _selectedProjection, value);
     }
 
-    public bool LicensingTermsAccepted
-    {
-        get => _licensingTermsAccepted;
-        set
-        {
-            if (SetProperty(ref _licensingTermsAccepted, value))
-                RaisePurchaseCanExecuteChanged();
-        }
-    }
-
     public bool IsQuoting
     {
         get => _isQuoting;
@@ -482,7 +471,7 @@ internal class ResultItemViewModel : PropertyChangedBase
         _commercialOrderService != null && HasValidCommercialInputs();
 
     private bool CanPlaceOrder() =>
-        CanGetQuote() && _currentQuote != null && LicensingTermsAccepted &&
+        CanGetQuote() && _currentQuote != null &&
         _quotedContext == CreateQuoteContext();
 
     private async void ExecuteGetQuote()
