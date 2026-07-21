@@ -16,7 +16,6 @@ internal class LoginViewModel : PropertyChangedBase
     private PasswordBox? _passwordBox;
 
     private string _username = string.Empty;
-    private string _selectedEnvironment = "production";
     private string _errorMessage = string.Empty;
     private bool _hasError;
     private bool _isLoading;
@@ -72,14 +71,6 @@ internal class LoginViewModel : PropertyChangedBase
         }
     }
 
-    public string SelectedEnvironment
-    {
-        get => _selectedEnvironment;
-        set => SetProperty(ref _selectedEnvironment, value);
-    }
-
-    public List<string> Environments { get; } = ["production", "staging", "test"];
-
     public string ErrorMessage
     {
         get => _errorMessage;
@@ -120,7 +111,7 @@ internal class LoginViewModel : PropertyChangedBase
         HasError = false;
         try
         {
-            _authService.SetCredentials(Username.Trim(), apiKey.Trim(), SelectedEnvironment);
+            _authService.SetCredentials(Username.Trim(), apiKey.Trim());
             var stacClient = new StacClient(_authService);
             await stacClient.ValidateCredentialsAsync(Username.Trim());
             _onLoginSuccess.Invoke();

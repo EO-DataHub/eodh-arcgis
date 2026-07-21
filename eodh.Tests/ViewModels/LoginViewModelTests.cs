@@ -10,7 +10,7 @@ namespace eodh.Tests.ViewModels;
 
 /// <summary>
 /// Req 1: Authentication — documents expected LoginViewModel behaviour:
-/// login flow, environment selection, credential validation, and error handling.
+/// login flow, production credential validation, and error handling.
 /// All tests require ArcGIS Pro SDK runtime (PropertyChangedBase, RelayCommand).
 /// </summary>
 [Collection("ArcGIS-SDK")]
@@ -73,23 +73,6 @@ public class LoginViewModelTests
         vm.Username = "testuser";
         vm.IsLoading = true;
         Assert.False(vm.LoginCommand.CanExecute(null));
-    }
-
-    [Fact]
-    public void Environments_ContainsThreeOptions()
-    {
-        var vm = CreateVm();
-        Assert.Equal(3, vm.Environments.Count);
-        Assert.Contains("production", vm.Environments);
-        Assert.Contains("staging", vm.Environments);
-        Assert.Contains("test", vm.Environments);
-    }
-
-    [Fact]
-    public void SelectedEnvironment_DefaultsToProduction()
-    {
-        var vm = CreateVm();
-        Assert.Equal("production", vm.SelectedEnvironment);
     }
 
     [Fact]
