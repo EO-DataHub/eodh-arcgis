@@ -123,6 +123,35 @@ public class StacClient
 
     private async Task<bool> ProbeCloudCoverCapabilityAsync(CatalogCollectionEntry entry)
     {
+        var itemsHref = GetLinkHref(entry.Collection.Links, "items");
+        if (!string.IsNullOrWhiteSpace(itemsHref))
+            return await ProbeItemsForCloudCoverAsync(entry, itemsHref);
+
+        return await ProbeSearchForCloudCoverAsync(entry);
+    }
+
+    private async Task<bool> ProbeItemsForCloudCoverAsync(
+        CatalogCollectionEntry entry,
+        string itemsHref)
+    {
+        var collectionSelfHref = GetLinkHref(entry.Collection.Links, "self");
+        var collectionBase = collectionSelfHref == null
+            ? new Uri(
+                $"{entry.CatalogueUrl.TrimEnd('/')}/collections/" +
+                $"{Uri.EscapeDataString(entry.Collection.Id)}/")
+            : ResolveUrl(collectionSelfHref, new Uri(entry.CatalogueUrl));
+        var itemsUrl = ResolveUrl(itemsHref, collectionBase);
+        var separator = string.IsNullOrEmpty(itemsUrl.Query) ? "?" : "&";
+
+        using var client = _authService.CreateHttpClient();
+        using var response = await client.GetAsync($"{itemsUrl}{separator}limit=5");
+        await ApiResponse.EnsureSuccessAsync(
+            response, "cloud-cover capability detection", default, _authService.ApiToken);
+        return ResponseHasCloudCoverProperty(await response.Content.ReadAsStringAsync());
+    }
+
+    private async Task<bool> ProbeSearchForCloudCoverAsync(CatalogCollectionEntry entry)
+    {
         using var client = _authService.CreateHttpClient();
         var body = new SearchFilters
         {
@@ -134,8 +163,11 @@ public class StacClient
         using var response = await client.PostAsync(entry.SearchUrl, content);
         await ApiResponse.EnsureSuccessAsync(
             response, "cloud-cover capability detection", default, _authService.ApiToken);
+        return ResponseHasCloudCoverProperty(await response.Content.ReadAsStringAsync());
+    }
 
-        var json = await response.Content.ReadAsStringAsync();
+    private static bool ResponseHasCloudCoverProperty(string json)
+    {
         using var document = JsonDocument.Parse(json);
         if (!document.RootElement.TryGetProperty("features", out var features) ||
             features.ValueKind != JsonValueKind.Array)

@@ -128,6 +128,38 @@ public class StacClientTests
     }
 
     [Fact]
+    public async Task CollectionHasCloudCoverAsync_PrefersAdvertisedItemsRepresentation()
+    {
+        var (client, handler) = CreateClient();
+        handler.RegisterJson("/provider/collections/sentinel2_ard/items?limit=5", """
+            {"type":"FeatureCollection","features":[
+              {"id":"sample","properties":{"eo:cloud_cover":63.51}}
+            ],"links":[]}
+            """);
+        handler.RegisterJson("/provider/search", """
+            {"type":"FeatureCollection","features":[
+              {"id":"sample","properties":{}}
+            ],"links":[]}
+            """);
+        var collection = new StacCollection(
+            "sentinel2_ard", "Sentinel 2 ARD", null, null, null, null,
+            [
+                new StacLink("self", "/provider/collections/sentinel2_ard", null, null),
+                new StacLink("items", "/provider/collections/sentinel2_ard/items", null, null)
+            ]);
+        var entry = new CatalogCollectionEntry(
+            CatalogRoot.Public, "Provider", "https://eodatahub.org.uk/provider",
+            "https://eodatahub.org.uk/provider/search", collection);
+
+        Assert.True(await client.CollectionHasCloudCoverAsync(entry));
+        Assert.True(await client.CollectionHasCloudCoverAsync(entry));
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Get, request.Method);
+        Assert.Contains("/items?limit=5", request.Url);
+    }
+
+    [Fact]
     public async Task GetNextPageAsync_ExtractsNextPage()
     {
         var (client, handler) = CreateClient();
