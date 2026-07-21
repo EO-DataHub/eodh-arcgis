@@ -76,6 +76,17 @@ public class LoginViewModelTests
     }
 
     [Fact]
+    public void WorkspaceCredentialsUri_UsesEncodedWorkspaceName()
+    {
+        var vm = CreateVm();
+        vm.Username = "my workspace";
+
+        Assert.Equal(
+            "https://eodatahub.org.uk/workspaces/?workspace=my%20workspace",
+            vm.WorkspaceCredentialsUri.AbsoluteUri);
+    }
+
+    [Fact]
     public void ExecuteLogin_SetsCredentials_OnAuthService()
     {
         var handler = new FixtureHttpHandler();

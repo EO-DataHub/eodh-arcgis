@@ -17,7 +17,7 @@ public partial class LoginView : UserControl
         };
     }
 
-    private void CredentialsLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    private void OpenLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
     {
         Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
         e.Handled = true;

@@ -36,7 +36,10 @@
                        FontSize="11" Opacity="0.7" Margin="0,0,0,4" />
             <TextBlock FontSize="11" Margin="0,0,0,16">
                 <Hyperlink NavigateUri="https://docs.eodatahub.org.uk/Getting-Started/workspaces/workspace-credentials/"
-                           RequestNavigate="CredentialsLink_RequestNavigate">Open EODH workspace credentials</Hyperlink>
+                           RequestNavigate="OpenLink_RequestNavigate">Open workspace documentation</Hyperlink>
+                <LineBreak />
+                <Hyperlink NavigateUri="{Binding WorkspaceCredentialsUri}"
+                           RequestNavigate="OpenLink_RequestNavigate">Open workspace credentials</Hyperlink>
             </TextBlock>
 
             <!-- Error message -->

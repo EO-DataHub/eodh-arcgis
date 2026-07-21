@@ -66,10 +66,16 @@ internal class LoginViewModel : PropertyChangedBase
         get => _username;
         set
         {
-            SetProperty(ref _username, value);
-            ((RelayCommand)LoginCommand).RaiseCanExecuteChanged();
+            if (SetProperty(ref _username, value))
+            {
+                NotifyPropertyChanged(nameof(WorkspaceCredentialsUri));
+                ((RelayCommand)LoginCommand).RaiseCanExecuteChanged();
+            }
         }
     }
+
+    public Uri WorkspaceCredentialsUri => new(
+        $"https://eodatahub.org.uk/workspaces/?workspace={Uri.EscapeDataString(Username.Trim())}");
 
     public string ErrorMessage
     {
