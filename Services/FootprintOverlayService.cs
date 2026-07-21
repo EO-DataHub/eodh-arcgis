@@ -214,7 +214,7 @@ internal sealed class FootprintOverlayService : IDisposable
             3,
             SimpleLineStyle.Solid);
         return SymbolFactory.Instance.ConstructPolygonSymbol(
-            ColorFactory.Instance.CreateRGBColor(255, 210, 0, 70),
+            ColorFactory.Instance.CreateRGBColor(255, 210, 0, 13),
             SimpleFillStyle.Solid,
             outline).MakeSymbolReference();
     }

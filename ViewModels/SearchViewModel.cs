@@ -570,11 +570,11 @@ internal class SearchViewModel : PropertyChangedBase
             var polygon = PolygonBuilderEx.CreatePolygon(envelope);
             var projected = GeometryEngine.Instance.Project(polygon, mapView.Map.SpatialReference);
 
-            // Semi-transparent blue fill with dashed outline
+            // Selected AOI: thick blue border with a 5% opacity fill.
             var outline = SymbolFactory.Instance.ConstructStroke(
-                ColorFactory.Instance.CreateRGBColor(0, 90, 200), 2, SimpleLineStyle.Dash);
+                ColorFactory.Instance.CreateRGBColor(0, 90, 200), 3, SimpleLineStyle.Solid);
             var fill = SymbolFactory.Instance.ConstructPolygonSymbol(
-                ColorFactory.Instance.CreateRGBColor(0, 120, 255, 30),
+                ColorFactory.Instance.CreateRGBColor(0, 120, 255, 13),
                 SimpleFillStyle.Solid, outline);
 
             _aoiOverlay = mapView.AddOverlay(projected, fill.MakeSymbolReference());
