@@ -78,23 +78,25 @@
             </Grid>
 
             <!-- Cloud Cover -->
-            <TextBlock Text="Max Cloud Cover" FontWeight="SemiBold" Margin="0,0,0,4" />
-            <Grid Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="45" />
-                </Grid.ColumnDefinitions>
-                <Slider Value="{Binding MaxCloudCover}"
-                        Minimum="0" Maximum="100"
-                        TickFrequency="10" IsSnapToTickEnabled="False" />
-                <TextBlock Grid.Column="1"
-                           Text="{Binding MaxCloudCover, StringFormat={}{0:F0}%}"
-                           VerticalAlignment="Center"
-                           HorizontalAlignment="Right" />
-            </Grid>
+            <StackPanel Visibility="{Binding HasCloudCoverFilter, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Max Cloud Cover" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="45" />
+                    </Grid.ColumnDefinitions>
+                    <Slider Value="{Binding MaxCloudCover}"
+                            Minimum="0" Maximum="100"
+                            TickFrequency="10" IsSnapToTickEnabled="False" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding MaxCloudCover, StringFormat={}{0:F0}%}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right" />
+                </Grid>
 
-            <TextBlock Text="Cloud cover applies only to datasets that publish cloud-cover metadata."
-                       FontSize="10" Opacity="0.6" TextWrapping="Wrap" Margin="0,-8,0,12" />
+                <TextBlock Text="This collection publishes cloud-cover metadata."
+                           FontSize="10" Opacity="0.6" TextWrapping="Wrap" Margin="0,-8,0,12" />
+            </StackPanel>
 
             <!-- Search Button -->
             <Button Content="Search"

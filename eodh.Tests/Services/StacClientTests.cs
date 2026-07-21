@@ -106,6 +106,25 @@ public class StacClientTests
     }
 
     [Fact]
+    public async Task CollectionHasCloudCoverAsync_ProbesOneCollectionItem()
+    {
+        var (client, handler) = CreateClient();
+        handler.RegisterJson("/provider/search", """
+            {"type":"FeatureCollection","features":[
+              {"id":"sample","properties":{"eo:cloud_cover":17}}
+            ],"links":[]}
+            """);
+        var entry = new CatalogCollectionEntry(
+            CatalogRoot.Public, "Provider", "https://eodatahub.org.uk/provider",
+            "https://eodatahub.org.uk/provider/search",
+            new StacCollection("cloudy", "Cloudy", null, null, null, null, null));
+
+        Assert.True(await client.CollectionHasCloudCoverAsync(entry));
+        Assert.Contains("\"limit\":1", handler.Requests.Single().Body);
+        Assert.Contains("\"cloudy\"", handler.Requests.Single().Body);
+    }
+
+    [Fact]
     public async Task GetNextPageAsync_ExtractsNextPage()
     {
         var (client, handler) = CreateClient();

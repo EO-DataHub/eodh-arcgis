@@ -37,6 +37,8 @@ internal class SearchViewModel : PropertyChangedBase
     private string _aoiDescription = "No area selected";
     private bool _isSearching;
     private bool _isLoadingCollections;
+    private bool _hasCloudCoverFilter;
+    private int _cloudCoverProbeVersion;
     private string _resultSummary = string.Empty;
 
     public SearchViewModel(StacClient stacClient, Action<List<StacItem>> onSearchCompleted)
@@ -87,6 +89,7 @@ internal class SearchViewModel : PropertyChangedBase
             if (SetProperty(ref _selectedCollection, value))
             {
                 ApplyCollectionMetadata(value?.Collection);
+                _ = UpdateCloudCoverAvailabilityAsync(value);
                 NotifyCanSearchChanged();
             }
         }
@@ -124,6 +127,12 @@ internal class SearchViewModel : PropertyChangedBase
             SetProperty(ref _isSearching, value);
             NotifyCanSearchChanged();
         }
+    }
+
+    public bool HasCloudCoverFilter
+    {
+        get => _hasCloudCoverFilter;
+        private set => SetProperty(ref _hasCloudCoverFilter, value);
     }
 
     public bool IsLoadingCollections
@@ -316,7 +325,9 @@ internal class SearchViewModel : PropertyChangedBase
                 StartDate = StartDate.HasValue ? new DateTimeOffset(StartDate.Value) : null,
                 EndDate = EndDate.HasValue ? new DateTimeOffset(EndDate.Value) : null,
                 Collections = [SelectedCollection.Collection.Id],
-                MaxCloudCover = MaxCloudCover < 100 ? MaxCloudCover : null,
+                MaxCloudCover = HasCloudCoverFilter && MaxCloudCover < 100
+                    ? MaxCloudCover
+                    : null,
                 Limit = 50
             };
 
@@ -371,6 +382,28 @@ internal class SearchViewModel : PropertyChangedBase
         {
             ResultSummary = $"Failed to import AOI: {ex.Message}";
         }
+    }
+
+    private async Task UpdateCloudCoverAvailabilityAsync(CatalogCollectionEntry? entry)
+    {
+        var probeVersion = ++_cloudCoverProbeVersion;
+        HasCloudCoverFilter = false;
+        MaxCloudCover = 100;
+        if (entry == null)
+            return;
+
+        var hasCloudCover = false;
+        try
+        {
+            hasCloudCover = await _stacClient.CollectionHasCloudCoverAsync(entry);
+        }
+        catch (Exception)
+        {
+            // Capability detection is optional; searches remain usable without it.
+        }
+
+        if (probeVersion == _cloudCoverProbeVersion && SelectedCollection == entry)
+            HasCloudCoverFilter = hasCloudCover;
     }
 
     private void SetImportedAoi(double[] bbox, string? sourceName = null)

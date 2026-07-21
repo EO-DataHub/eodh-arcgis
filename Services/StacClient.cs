@@ -94,6 +94,22 @@ public class StacClient
         SearchAtUrlAsync(entry.SearchUrl, filters, ct);
 
     /// <summary>
+    /// Probe one item to determine whether a collection publishes the STAC
+    /// eo:cloud_cover property used by the search filter.
+    /// </summary>
+    public async Task<bool> CollectionHasCloudCoverAsync(
+        CatalogCollectionEntry entry,
+        CancellationToken ct = default)
+    {
+        var sample = await SearchAsync(entry, new SearchFilters
+        {
+            Collections = [entry.Collection.Id],
+            Limit = 1
+        }, ct);
+        return sample.Items.Any(item => item.Properties?.CloudCover.HasValue == true);
+    }
+
+    /// <summary>
     /// Compatibility overload for callers that already hold a catalogue.
     /// </summary>
     public Task<StacSearchResult> SearchAsync(

@@ -90,6 +90,18 @@ public class SearchViewModelTests
     }
 
     [Fact]
+    public async Task CloudCoverFilter_ShowsOnlyWhenSamplePublishesProperty()
+    {
+        var (vm, handler) = CreateVm();
+        RegisterDiscovery(handler);
+
+        await vm.LoadCatalogsAsync();
+        await WaitUntilAsync(() => vm.HasCloudCoverFilter);
+
+        Assert.True(vm.HasCloudCoverFilter);
+    }
+
+    [Fact]
     public async Task MaxCloudCoverBelow100_ProducesCloudPredicate()
     {
         var (vm, handler) = CreateVm();
@@ -122,6 +134,7 @@ public class SearchViewModelTests
     {
         await vm.LoadCatalogsAsync();
         await WaitUntilAsync(() => vm.SelectedCollection != null);
+        await WaitUntilAsync(() => vm.HasCloudCoverFilter);
         vm.SetAoiFromPolygon(CreateEnvelope());
     }
 
@@ -138,7 +151,9 @@ public class SearchViewModelTests
             {"collections":[{"id":"collection","title":"Collection title","links":[{"rel":"parent","href":"/provider"}]}],"links":[]}
             """);
         handler.RegisterJson("/provider/search", """
-            {"type":"FeatureCollection","features":[],"links":[],"numMatched":0}
+            {"type":"FeatureCollection","features":[
+              {"id":"sample","properties":{"eo:cloud_cover":20}}
+            ],"links":[],"numMatched":1}
             """);
         handler.RegisterJson("/provider", """
             {"id":"provider","title":"Provider","type":"Catalog","links":[
