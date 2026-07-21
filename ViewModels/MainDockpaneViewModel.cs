@@ -93,6 +93,7 @@ internal class MainDockpaneViewModel : DockPane
     }
 
     public ICommand LogoutCommand => new RelayCommand(ExecuteLogout);
+    public ICommand SwitchWorkspaceCommand => new RelayCommand(ExecuteLogout);
 
     #endregion
 
