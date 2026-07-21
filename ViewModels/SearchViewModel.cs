@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using ArcData = ArcGIS.Core.Data;
 using GeoJSON.Net.Feature;
 using GeoJson = GeoJSON.Net.Geometry;
 using Newtonsoft.Json;
@@ -213,10 +214,7 @@ internal class SearchViewModel : PropertyChangedBase
 
         if (bbox == null) return;
 
-        _aoiBbox = bbox;
-        AoiDescription = $"Imported AOI: {bbox[0]:F2}, {bbox[1]:F2} to {bbox[2]:F2}, {bbox[3]:F2}";
-        NotifyAoiCommandsChanged();
-        _ = ShowAoiOnMap();
+        SetImportedAoi(bbox);
     }
 
     #endregion
@@ -342,21 +340,103 @@ internal class SearchViewModel : PropertyChangedBase
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
             Title = "Import AOI",
-            Filter = "GeoJSON files (*.geojson;*.json)|*.geojson;*.json|All files (*.*)|*.*"
+            Filter = "Supported AOI files (*.geojson;*.json;*.shp;*.gpkg)|*.geojson;*.json;*.shp;*.gpkg|" +
+                     "GeoJSON files (*.geojson;*.json)|*.geojson;*.json|" +
+                     "Shapefiles (*.shp)|*.shp|GeoPackages (*.gpkg)|*.gpkg"
         };
 
         if (dlg.ShowDialog() != true) return;
 
         try
         {
-            var json = await File.ReadAllTextAsync(dlg.FileName);
-            SetAoiFromGeoJson(json);
+            var extension = Path.GetExtension(dlg.FileName).ToLowerInvariant();
+            if (extension is ".geojson" or ".json")
+            {
+                var json = await File.ReadAllTextAsync(dlg.FileName);
+                SetAoiFromGeoJson(json);
+            }
+            else
+            {
+                var bbox = await ReadVectorAoiExtentAsync(dlg.FileName);
+                SetImportedAoi(bbox, Path.GetFileName(dlg.FileName));
+            }
         }
         catch (Exception ex)
         {
             ResultSummary = $"Failed to import AOI: {ex.Message}";
         }
     }
+
+    private void SetImportedAoi(double[] bbox, string? sourceName = null)
+    {
+        _aoiBbox = bbox;
+        var source = string.IsNullOrWhiteSpace(sourceName) ? string.Empty : $" ({sourceName})";
+        AoiDescription = $"Imported AOI{source}: {bbox[0]:F2}, {bbox[1]:F2} to {bbox[2]:F2}, {bbox[3]:F2}";
+        NotifyAoiCommandsChanged();
+        _ = ShowAoiOnMap();
+    }
+
+    private static Task<double[]> ReadVectorAoiExtentAsync(string path) =>
+        QueuedTask.Run(() =>
+        {
+            var extension = Path.GetExtension(path).ToLowerInvariant();
+            return extension switch
+            {
+                ".shp" => ReadShapefileExtent(path),
+                ".gpkg" => ReadGeoPackageExtent(path),
+                _ => throw new NotSupportedException($"Unsupported AOI file type: {extension}")
+            };
+        });
+
+    private static double[] ReadShapefileExtent(string path)
+    {
+        var folder = Path.GetDirectoryName(path)
+            ?? throw new InvalidDataException("The shapefile folder could not be determined.");
+        var connection = new ArcData.FileSystemConnectionPath(
+            new Uri(folder), ArcData.FileSystemDatastoreType.Shapefile);
+        using var dataStore = new ArcData.FileSystemDatastore(connection);
+        using var featureClass = dataStore.OpenDataset<ArcData.FeatureClass>(Path.GetFileName(path));
+        return ProjectExtentToWgs84(featureClass.GetExtent());
+    }
+
+    private static double[] ReadGeoPackageExtent(string path)
+    {
+        using var database = new ArcData.Database(new ArcData.SQLiteConnectionPath(new Uri(path)));
+        double[]? combined = null;
+
+        foreach (var tableName in database.GetTableNames())
+        {
+            using var description = database.GetQueryDescription(tableName);
+            if (!description.IsSpatialQuery())
+                continue;
+
+            using var table = database.OpenTable(description);
+            if (table is not ArcData.FeatureClass featureClass)
+                continue;
+
+            database.CalculateExtent(featureClass);
+            combined = CombineExtents(combined, ProjectExtentToWgs84(featureClass.GetExtent()));
+        }
+
+        return combined ?? throw new InvalidDataException(
+            "The GeoPackage does not contain a spatial feature layer.");
+    }
+
+    private static double[] ProjectExtentToWgs84(Envelope extent)
+    {
+        var wgs84 = SpatialReferenceBuilder.CreateSpatialReference(4326);
+        var projected = GeometryEngine.Instance.Project(extent, wgs84) as Envelope
+            ?? throw new InvalidDataException("The AOI extent could not be projected to WGS84.");
+        return [projected.XMin, projected.YMin, projected.XMax, projected.YMax];
+    }
+
+    private static double[] CombineExtents(double[]? current, double[] next) => current == null
+        ? next
+        :
+        [
+            Math.Min(current[0], next[0]), Math.Min(current[1], next[1]),
+            Math.Max(current[2], next[2]), Math.Max(current[3], next[3])
+        ];
 
     private async void ExecuteUseMapExtent()
     {
