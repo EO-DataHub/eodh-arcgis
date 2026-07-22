@@ -53,6 +53,15 @@
                     <views:TimelineView DataContext="{Binding TimelineVM}"
                                         DockPanel.Dock="Top"
                                         Height="92" />
+                    <StackPanel DockPanel.Dock="Top"
+                                Orientation="Horizontal"
+                                Margin="8,5,8,2">
+                        <CheckBox Content="Show footprints"
+                                  IsChecked="{Binding ResultsVM.ShowFootprints}" />
+                        <CheckBox Content="Show AOI"
+                                  IsChecked="{Binding SearchVM.ShowAoi}"
+                                  Margin="16,0,0,0" />
+                    </StackPanel>
                     <views:ResultsView DataContext="{Binding ResultsVM}" />
                 </DockPanel>
             </TabItem>

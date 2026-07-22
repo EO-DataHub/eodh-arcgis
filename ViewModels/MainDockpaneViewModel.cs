@@ -58,6 +58,8 @@ internal class MainDockpaneViewModel : DockPane
                 _syncing = false;
             }
         };
+
+        _searchViewModel.AoiCleared += () => _resultsViewModel.ShowFootprints = false;
     }
 
     #region Properties

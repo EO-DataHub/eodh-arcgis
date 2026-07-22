@@ -130,6 +130,21 @@ public class SearchViewModelTests
         Assert.True(vm.ClearAoiCommand.CanExecute(null));
     }
 
+    [Fact]
+    public void ClearAoiCommand_NotifiesThatResultFootprintsShouldBeHidden()
+    {
+        var (vm, _) = CreateVm();
+        var wasNotified = false;
+        vm.AoiCleared += () => wasNotified = true;
+        vm.SetAoiFromPolygon(CreateEnvelope());
+
+        vm.ClearAoiCommand.Execute(null);
+
+        Assert.True(wasNotified);
+        Assert.Equal("No area selected", vm.AoiDescription);
+        Assert.False(vm.ClearAoiCommand.CanExecute(null));
+    }
+
     private static async Task PrepareSearchAsync(SearchViewModel vm)
     {
         await vm.LoadCatalogsAsync();

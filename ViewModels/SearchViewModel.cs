@@ -38,6 +38,7 @@ internal class SearchViewModel : PropertyChangedBase
     private bool _isSearching;
     private bool _isLoadingCollections;
     private bool _hasCloudCoverFilter;
+    private bool _showAoi = true;
     private int _cloudCoverProbeVersion;
     private string _resultSummary = string.Empty;
 
@@ -60,6 +61,8 @@ internal class SearchViewModel : PropertyChangedBase
         foreach (var root in _stacClient.CatalogRoots)
             Catalogs.Add(root);
     }
+
+    internal event Action? AoiCleared;
 
     #region Properties
 
@@ -133,6 +136,21 @@ internal class SearchViewModel : PropertyChangedBase
     {
         get => _hasCloudCoverFilter;
         private set => SetProperty(ref _hasCloudCoverFilter, value);
+    }
+
+    public bool ShowAoi
+    {
+        get => _showAoi;
+        set
+        {
+            if (!SetProperty(ref _showAoi, value))
+                return;
+
+            if (value)
+                _ = ShowAoiOnMap();
+            else
+                HideAoiOnMap();
+        }
     }
 
     public bool IsLoadingCollections
@@ -278,12 +296,12 @@ internal class SearchViewModel : PropertyChangedBase
 
     private void ExecuteClearAoi()
     {
-        _aoiOverlay?.Dispose();
-        _aoiOverlay = null;
+        HideAoiOnMap();
         _aoiBbox = null;
         _aoiFromCollection = false;
         AoiDescription = "No area selected";
         NotifyAoiCommandsChanged();
+        AoiCleared?.Invoke();
     }
 
     /// <summary>
@@ -546,8 +564,7 @@ internal class SearchViewModel : PropertyChangedBase
         }
         else if (_aoiFromCollection)
         {
-            _aoiOverlay?.Dispose();
-            _aoiOverlay = null;
+            HideAoiOnMap();
             _aoiBbox = null;
             _aoiFromCollection = false;
             AoiDescription = "No area selected";
@@ -581,14 +598,14 @@ internal class SearchViewModel : PropertyChangedBase
 
     private async Task ShowAoiOnMap()
     {
-        if (_aoiBbox == null) return;
+        if (!ShowAoi || _aoiBbox == null) return;
         if (MapView.Active == null) return;
 
         var bbox = _aoiBbox;
         await QueuedTask.Run(() =>
         {
             var mapView = MapView.Active;
-            if (mapView == null) return;
+            if (mapView == null || !ShowAoi) return;
 
             // Remove previous overlay
             _aoiOverlay?.Dispose();
@@ -612,6 +629,12 @@ internal class SearchViewModel : PropertyChangedBase
 
             _aoiOverlay = mapView.AddOverlay(projected, fill.MakeSymbolReference());
         });
+    }
+
+    private void HideAoiOnMap()
+    {
+        _aoiOverlay?.Dispose();
+        _aoiOverlay = null;
     }
 
     private static GeoJson.IGeometryObject? DeserializeGeometry(string geoJson, string? type)
