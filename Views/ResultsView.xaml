@@ -138,6 +138,7 @@
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
                                                         <CheckBox IsChecked="{Binding IsSelected}"
                                                                  IsEnabled="{Binding IsLoadable}"
@@ -187,6 +188,15 @@
                                                                 </TextBlock.Style>
                                                             </TextBlock>
                                                         </Border>
+                                                        <Button Grid.Column="2"
+                                                                Content="Quick view"
+                                                                Command="{Binding QuickViewCommand}"
+                                                                IsEnabled="{Binding IsQuickViewAvailable}"
+                                                                Margin="6,0,0,0"
+                                                                Padding="5,1"
+                                                                FontSize="9"
+                                                                HorizontalAlignment="Right"
+                                                                ToolTip="Add a fast XYZ preview of this asset to the active map" />
                                                     </Grid>
                                                 </Border>
                                             </DataTemplate>

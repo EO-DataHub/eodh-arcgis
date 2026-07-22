@@ -250,7 +250,11 @@ internal class ResultItemViewModel : PropertyChangedBase
                 DisplayName = kv.Value.Title ?? kv.Key,
                 FileType = kv.Value.FileType,
                 IsLoadable = kv.Value.IsLoadable,
-                IsSelected = kv.Value.IsLoadable && defaultAssetKeys.Contains(kv.Key)
+                IsSelected = kv.Value.IsLoadable && defaultAssetKeys.Contains(kv.Key),
+                IsQuickViewAvailable = TitilerXyzUrlBuilder.CanBuild(Item, kv.Key),
+                QuickViewCommand = TitilerXyzUrlBuilder.CanBuild(Item, kv.Key)
+                    ? new RelayCommand(() => _ = LoadQuickViewAsync(kv.Key))
+                    : null
             })
             .ToList();
         HasDefaultAssetSelection = AllAssets.Any(asset => asset.IsSelected);
@@ -490,6 +494,31 @@ internal class ResultItemViewModel : PropertyChangedBase
             IsAssetsPopupOpen = true;
     }
 
+    private async Task LoadQuickViewAsync(string assetKey)
+    {
+        IsLoadingLayer = true;
+        try
+        {
+            var layer = await _layerService.LoadQuickViewAsync(Item, assetKey);
+            if (layer == null)
+            {
+                ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                    "Open or activate a map before using Quick view.",
+                    "EODH - Quick View");
+            }
+        }
+        catch (Exception ex)
+        {
+            ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
+                $"Failed to open Quick view for asset '{assetKey}'.\n\n{ex.Message}",
+                "EODH - Quick View Error");
+        }
+        finally
+        {
+            IsLoadingLayer = false;
+        }
+    }
+
     private bool CanGetQuote() =>
         IsCommercial && !_isQuoting && !_isOrdering && Item.SelfLink != null &&
         _commercialOrderService != null && HasValidCommercialInputs();
@@ -687,6 +716,8 @@ internal class AssetDetailViewModel : PropertyChangedBase
     public required string DisplayName { get; init; }
     public required string FileType { get; init; }
     public required bool IsLoadable { get; init; }
+    public bool IsQuickViewAvailable { get; init; }
+    public ICommand? QuickViewCommand { get; init; }
 
     public bool IsSelected
     {
