@@ -45,24 +45,35 @@ public class FileDownloaderTests
     [Fact]
     public async Task DownloadToTempAsync_DownloadsSmallFile()
     {
-        // Real CEDA cloud mask — a small COG that ArcGIS fails to load remotely
-        var url = "https://dap.ceda.ac.uk/neodc/sentinel_ard/data/sentinel_2/2026/02/16/" +
-                  "S2B_20260216_latn518lonw0008_T30UXC_ORB094_20260216132351_utm30n_osgb_clouds.tif";
+        var payload = new byte[] { 1, 2, 3, 4, 5 };
+        var url = $"https://example.test/{Guid.NewGuid():N}.tif";
+        using var client = new HttpClient(new StubHttpHandler(payload));
+        string? tempPath = null;
 
-        var tempPath = await FileDownloader.DownloadToTempAsync(url);
+        try
+        {
+            tempPath = await FileDownloader.DownloadToTempAsync(
+                url,
+                httpClient: client);
 
-        Assert.NotNull(tempPath);
-        Assert.True(File.Exists(tempPath));
-
-        var info = new FileInfo(tempPath!);
-        Assert.True(info.Length > 0);
+            Assert.NotNull(tempPath);
+            Assert.True(File.Exists(tempPath));
+            Assert.Equal(payload, await File.ReadAllBytesAsync(tempPath!));
+        }
+        finally
+        {
+            if (tempPath != null)
+                File.Delete(tempPath);
+        }
     }
 
     [Fact]
     public async Task DownloadToTempAsync_ReturnsNull_ForInvalidUrl()
     {
+        using var client = new HttpClient(new ThrowingHttpHandler());
         var tempPath = await FileDownloader.DownloadToTempAsync(
-            "https://example.invalid/does_not_exist.tif");
+            "https://example.test/does_not_exist.tif",
+            httpClient: client);
 
         Assert.Null(tempPath);
     }
@@ -70,13 +81,24 @@ public class FileDownloaderTests
     [Fact]
     public async Task DownloadToTempAsync_UsesEodhSubdirectory()
     {
-        var url = "https://dap.ceda.ac.uk/neodc/sentinel_ard/data/sentinel_2/2026/02/16/" +
-                  "S2B_20260216_latn518lonw0008_T30UXC_ORB094_20260216132351_utm30n_osgb_clouds.tif";
+        var url = $"https://example.test/{Guid.NewGuid():N}.tif";
+        using var client = new HttpClient(new StubHttpHandler([1]));
+        string? tempPath = null;
 
-        var tempPath = await FileDownloader.DownloadToTempAsync(url);
+        try
+        {
+            tempPath = await FileDownloader.DownloadToTempAsync(
+                url,
+                httpClient: client);
 
-        Assert.NotNull(tempPath);
-        Assert.Contains("eodh", tempPath!);
+            Assert.NotNull(tempPath);
+            Assert.Contains("eodh", tempPath!);
+        }
+        finally
+        {
+            if (tempPath != null)
+                File.Delete(tempPath);
+        }
     }
 
     [Fact]
@@ -168,5 +190,13 @@ public class FileDownloaderTests
                 RequestMessage = request
             });
         }
+    }
+
+    private sealed class ThrowingHttpHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken) =>
+            throw new HttpRequestException("Simulated network failure.");
     }
 }

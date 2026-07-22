@@ -19,18 +19,26 @@ public class ThumbnailCache
     private readonly HttpClient _httpClient;
 
     public ThumbnailCache()
+        : this(
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "EodhArcGis", "cache", "thumbnails"),
+            CreateDefaultHttpClient())
     {
-        _cacheDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "EodhArcGis", "cache", "thumbnails");
+    }
 
+    internal ThumbnailCache(string cacheDir, HttpClient httpClient)
+    {
+        _cacheDir = cacheDir;
+        _httpClient = httpClient;
         Directory.CreateDirectory(_cacheDir);
+    }
 
-        _httpClient = new HttpClient
+    private static HttpClient CreateDefaultHttpClient() =>
+        new()
         {
             Timeout = TimeSpan.FromSeconds(15)
         };
-    }
 
     /// <summary>
     /// Get a thumbnail image, loading from cache or downloading as needed.
