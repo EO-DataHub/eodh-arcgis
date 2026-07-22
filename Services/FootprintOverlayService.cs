@@ -15,6 +15,9 @@ internal sealed record FootprintRenderResult(int RenderedCount, int SkippedCount
 /// </summary>
 internal sealed class FootprintOverlayService : IDisposable
 {
+    internal const double OrdinaryOutlineWidth = 0.75;
+    internal const double SelectedOutlineWidth = 1.5;
+
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly List<IDisposable> _overlays = [];
     private readonly Dictionary<string, Geometry> _geometries =
@@ -199,11 +202,11 @@ internal sealed class FootprintOverlayService : IDisposable
     {
         var outline = SymbolFactory.Instance.ConstructStroke(
             ColorFactory.Instance.CreateRGBColor(40, 130, 210, 160),
-            1.2,
+            OrdinaryOutlineWidth,
             SimpleLineStyle.Solid);
         return SymbolFactory.Instance.ConstructPolygonSymbol(
-            ColorFactory.Instance.CreateRGBColor(40, 130, 210, 24),
-            SimpleFillStyle.Solid,
+            ColorFactory.Instance.CreateRGBColor(40, 130, 210, 0),
+            SimpleFillStyle.Null,
             outline).MakeSymbolReference();
     }
 
@@ -211,11 +214,11 @@ internal sealed class FootprintOverlayService : IDisposable
     {
         var outline = SymbolFactory.Instance.ConstructStroke(
             ColorFactory.Instance.CreateRGBColor(255, 190, 0),
-            3,
+            SelectedOutlineWidth,
             SimpleLineStyle.Solid);
         return SymbolFactory.Instance.ConstructPolygonSymbol(
-            ColorFactory.Instance.CreateRGBColor(255, 210, 0, 13),
-            SimpleFillStyle.Solid,
+            ColorFactory.Instance.CreateRGBColor(255, 210, 0, 0),
+            SimpleFillStyle.Null,
             outline).MakeSymbolReference();
     }
 }
