@@ -32,13 +32,13 @@
                     <Run Text="{Binding LoggedInUsername, Mode=OneWay}" FontWeight="SemiBold" />
                     <Run Text=" (" /><Run Text="{Binding LoggedInEnvironment, Mode=OneWay}" /><Run Text=")" />
                 </TextBlock>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="Switch workspace"
-                            Command="{Binding SwitchWorkspaceCommand}"
-                            Padding="8,2" FontSize="11" Margin="0,0,4,0" />
+                <StackPanel Grid.Column="1" Orientation="Vertical">
                     <Button Content="Log out"
                             Command="{Binding LogoutCommand}"
                             Padding="8,2" FontSize="11" />
+                    <Button Content="Switch workspace"
+                            Command="{Binding SwitchWorkspaceCommand}"
+                            Padding="8,2" FontSize="11" Margin="0,4,0,0" />
                 </StackPanel>
             </Grid>
 
