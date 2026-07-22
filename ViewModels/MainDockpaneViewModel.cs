@@ -17,6 +17,7 @@ internal class MainDockpaneViewModel : DockPane
     private readonly ResultsViewModel _resultsViewModel;
     private readonly TimelineViewModel _timelineViewModel;
     private readonly WorkspaceViewModel _workspaceViewModel;
+    private readonly AssetLoadStatusViewModel _assetLoadStatus;
     private readonly Services.AuthService _authService;
 
     private bool _isLoggedIn;
@@ -31,14 +32,15 @@ internal class MainDockpaneViewModel : DockPane
         _authService = authService;
         var stacClient = new Services.StacClient(authService);
         var thumbnailCache = new Services.ThumbnailCache();
-        var layerService = new Services.LayerService(authService);
+        _assetLoadStatus = new AssetLoadStatusViewModel();
+        var layerService = new Services.LayerService(authService, _assetLoadStatus);
         var commercialOrderService = new Services.CommercialOrderService(authService);
 
         _loginViewModel = new LoginViewModel(authService, OnLoginSuccess);
         _searchViewModel = new SearchViewModel(stacClient, OnSearchCompleted);
         _resultsViewModel = new ResultsViewModel(stacClient, layerService, thumbnailCache, commercialOrderService);
         _timelineViewModel = new TimelineViewModel(stacClient, layerService, thumbnailCache);
-        _workspaceViewModel = new WorkspaceViewModel(authService);
+        _workspaceViewModel = new WorkspaceViewModel(authService, layerService: layerService);
 
         _timelineViewModel.SetSelectionCallback(item =>
         {
@@ -70,6 +72,7 @@ internal class MainDockpaneViewModel : DockPane
     public ResultsViewModel ResultsVM => _resultsViewModel;
     public TimelineViewModel TimelineVM => _timelineViewModel;
     public WorkspaceViewModel WorkspaceVM => _workspaceViewModel;
+    public AssetLoadStatusViewModel AssetLoadStatus => _assetLoadStatus;
 
     public bool IsLoggedIn
     {
@@ -126,6 +129,7 @@ internal class MainDockpaneViewModel : DockPane
     {
         ResultsVM.ClearResults();
         WorkspaceVM.Clear();
+        AssetLoadStatus.Reset();
         _authService.ClearCredentials();
         IsLoggedIn = false;
         LoggedInUsername = string.Empty;

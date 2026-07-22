@@ -260,8 +260,19 @@ internal sealed class WorkspaceRecordViewModel : PropertyChangedBase
         try
         {
             await _layerService.SetMapToOsgbAsync();
-            foreach (var asset in Assets.Where(asset => asset.IsLoadable && asset.IsSelected))
-                await _layerService.LoadAssetAsync(Record.Item, Record.Item.Assets[asset.Key], asset.Key);
+            var selectedAssets = Assets
+                .Where(asset => asset.IsLoadable && asset.IsSelected)
+                .ToList();
+            for (var index = 0; index < selectedAssets.Count; index++)
+            {
+                var asset = selectedAssets[index];
+                await _layerService.LoadAssetAsync(
+                    Record.Item,
+                    Record.Item.Assets[asset.Key],
+                    asset.Key,
+                    index + 1,
+                    selectedAssets.Count);
+            }
         }
         catch (Exception ex)
         {

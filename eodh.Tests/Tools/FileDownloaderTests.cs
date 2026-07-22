@@ -1,4 +1,6 @@
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using eodh.Tools;
 using Xunit;
 
@@ -10,6 +12,36 @@ namespace eodh.Tests.Tools;
 /// </summary>
 public class FileDownloaderTests
 {
+    [Fact]
+    public async Task DownloadToTempAsync_ReportsTransferredAndTotalBytes()
+    {
+        var payload = new byte[300_000];
+        Random.Shared.NextBytes(payload);
+        var url = $"https://example.test/{Guid.NewGuid():N}.tif";
+        using var client = new HttpClient(new StubHttpHandler(payload));
+        var progress = new CollectingProgress();
+        string? path = null;
+
+        try
+        {
+            path = await FileDownloader.DownloadToTempAsync(
+                url,
+                progress: progress,
+                httpClient: client);
+
+            Assert.NotNull(path);
+            Assert.Equal(payload, await File.ReadAllBytesAsync(path!));
+            var final = Assert.Single(progress.Updates, update =>
+                update.BytesReceived == payload.Length);
+            Assert.Equal(payload.Length, final.TotalBytes);
+        }
+        finally
+        {
+            if (path != null)
+                File.Delete(path);
+        }
+    }
+
     [Fact]
     public async Task DownloadToTempAsync_DownloadsSmallFile()
     {
@@ -113,5 +145,28 @@ public class FileDownloaderTests
         var path = FileDownloader.GetCachePath("https://example.com/data.nc");
 
         Assert.EndsWith(".nc", path);
+    }
+
+    private sealed class CollectingProgress : IProgress<DownloadProgress>
+    {
+        public List<DownloadProgress> Updates { get; } = [];
+        public void Report(DownloadProgress value) => Updates.Add(value);
+    }
+
+    private sealed class StubHttpHandler(byte[] payload) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            var content = new ByteArrayContent(payload);
+            content.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = content,
+                RequestMessage = request
+            });
+        }
     }
 }

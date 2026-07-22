@@ -42,6 +42,70 @@
                 </StackPanel>
             </Grid>
 
+            <!-- Dockpane-wide asset activity. Bind through the main view model so
+                 the data contexts inherited by the tab contents remain unchanged. -->
+            <Border DockPanel.Dock="Bottom"
+                    Height="56"
+                    Background="#1C808080"
+                    BorderBrush="#66808080"
+                    BorderThickness="0,1,0,0"
+                    Padding="8,5"
+                    SnapsToDevicePixels="True">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Background="#24808080"
+                            CornerRadius="2"
+                            Padding="5,1"
+                            Margin="0,0,7,0"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="STATUS"
+                                   FontSize="8"
+                                   FontWeight="SemiBold"
+                                   Opacity="0.75" />
+                    </Border>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding AssetLoadStatus.StatusText, Mode=OneWay}"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding AssetLoadStatus.StatusText, Mode=OneWay}" />
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding AssetLoadStatus.ProgressText, Mode=OneWay}"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0" />
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="1"
+                               Grid.ColumnSpan="2"
+                               Text="{Binding AssetLoadStatus.DetailText, Mode=OneWay}"
+                               FontSize="9"
+                               Opacity="0.7"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding AssetLoadStatus.DetailText, Mode=OneWay}" />
+                    <ProgressBar Grid.Row="2"
+                                 Grid.ColumnSpan="3"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Value="{Binding AssetLoadStatus.ProgressValue, Mode=OneWay}"
+                                 IsIndeterminate="{Binding AssetLoadStatus.HasNonReadyStatus, Mode=OneWay}"
+                                 Visibility="{Binding AssetLoadStatus.HasNonReadyStatus, Mode=OneWay, Converter={StaticResource BoolToVis}}"
+                                 Height="3"
+                                 Margin="0,4,0,0" />
+                </Grid>
+            </Border>
+
             <TabControl SelectedIndex="{Binding SelectedTabIndex}">
 
             <TabItem Header="Search">

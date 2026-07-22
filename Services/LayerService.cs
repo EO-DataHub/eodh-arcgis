@@ -20,10 +20,18 @@ public class LayerService
     private const int OsgbEpsg = 27700;
 
     private readonly AuthService _authService;
+    private readonly IAssetLoadProgressReporter? _loadProgress;
+    private readonly SemaphoreSlim _assetLoadGate = new(1, 1);
 
     public LayerService(AuthService authService)
+        : this(authService, null)
+    {
+    }
+
+    internal LayerService(AuthService authService, IAssetLoadProgressReporter? loadProgress)
     {
         _authService = authService;
+        _loadProgress = loadProgress;
     }
 
     static LayerService()
@@ -55,7 +63,55 @@ public class LayerService
     /// <summary>
     /// Load a STAC asset into the active map as a raster layer.
     /// </summary>
-    public async Task<Layer?> LoadAssetAsync(StacItem item, StacAsset asset, string? assetKey = null)
+    public async Task<Layer?> LoadAssetAsync(
+        StacItem item,
+        StacAsset asset,
+        string? assetKey = null,
+        int assetIndex = 1,
+        int assetCount = 1)
+    {
+        await _assetLoadGate.WaitAsync();
+        try
+        {
+            var displayKey = assetKey ?? asset.Title ?? "asset";
+            var operationId = _loadProgress?.Begin(
+                item.Id,
+                displayKey,
+                asset.FileType,
+                asset.ExpectedSize,
+                assetIndex,
+                assetCount);
+
+            try
+            {
+                var result = await LoadAssetCoreAsync(item, asset, assetKey, operationId);
+                if (operationId.HasValue)
+                {
+                    if (result != null)
+                        _loadProgress!.Complete(operationId.Value, displayKey);
+                    else
+                        _loadProgress!.Fail(operationId.Value, "The asset could not be added to the active map.");
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                if (operationId.HasValue)
+                    _loadProgress!.Fail(operationId.Value, ex.Message);
+                throw;
+            }
+        }
+        finally
+        {
+            _assetLoadGate.Release();
+        }
+    }
+
+    private async Task<Layer?> LoadAssetCoreAsync(
+        StacItem item,
+        StacAsset asset,
+        string? assetKey,
+        Guid? operationId)
     {
         var shortId = item.Id.Length > 60 ? item.Id[..60] : item.Id;
         var layerName = $"{item.Collection ?? "item"} - {shortId}";
@@ -76,7 +132,7 @@ public class LayerService
 
         // NetCDF uses a dedicated loading path with MakeMultidimensionalRasterLayer
         if (fileType == "NetCDF")
-            return await LoadNetCdfAssetAsync(asset, assetKey, layerName);
+            return await LoadNetCdfAssetAsync(asset, assetKey, layerName, operationId);
 
         var sw = Stopwatch.StartNew();
         Log($"LOAD START: {assetKey ?? "?"} | {fileType} | {href}");
@@ -85,6 +141,7 @@ public class LayerService
         var cachedPath = FileDownloader.GetCachedPath(href);
         if (cachedPath != null)
         {
+            ReportStage(operationId, "Adding cached file to the map...");
             var result = await QueuedTask.Run(() =>
             {
                 var map = MapView.Active?.Map;
@@ -100,6 +157,7 @@ public class LayerService
         {
             try
             {
+                ReportStage(operationId, "Opening remote raster in ArcGIS Pro...");
                 SetGdalAuthHeaders();
                 var vsicurlPath = "/vsicurl/" + href;
                 var gpArgs = Geoprocessing.MakeValueArray(vsicurlPath, layerName);
@@ -125,6 +183,7 @@ public class LayerService
         // Tier 2: Try raw URL via LayerFactory
         try
         {
+            ReportStage(operationId, "Trying the remote URL in ArcGIS Pro...");
             var result = await QueuedTask.Run(() =>
             {
                 var map = MapView.Active?.Map;
@@ -141,11 +200,16 @@ public class LayerService
 
         // Tier 3: Download to temp (with caching) and load locally
         Log($"TIER 3 DOWNLOAD START: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
-        var tempPath = await FileDownloader.DownloadToTempAsync(href, _authService.ApiToken);
+        ReportStage(operationId, "Starting fallback download...");
+        var tempPath = await FileDownloader.DownloadToTempAsync(
+            href,
+            _authService.ApiToken,
+            CreateDownloadProgress(operationId, asset.ExpectedSize));
         if (tempPath == null) throw new InvalidOperationException(
             $"Failed to download asset from {href}");
 
         Log($"TIER 3 DOWNLOAD DONE: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms | {tempPath}");
+        ReportStage(operationId, "Adding the downloaded file to the map...");
         var finalResult = await QueuedTask.Run(() =>
         {
             var map = MapView.Active?.Map;
@@ -164,14 +228,42 @@ public class LayerService
         if (!HasActiveMap())
             return null;
 
-        return await QueuedTask.Run(() =>
+        await _assetLoadGate.WaitAsync();
+        Guid? operationId = null;
+        try
         {
-            var map = MapView.Active?.Map;
-            if (map == null) return null;
+            operationId = _loadProgress?.Begin(
+                serviceUrl, layerName, "Map service", null, 1, 1);
+            ReportStage(operationId, "Opening map service in ArcGIS Pro...");
 
-            var uri = new Uri(serviceUrl);
-            return LayerFactory.Instance.CreateLayer(uri, map, layerName: layerName);
-        });
+            var result = await QueuedTask.Run(() =>
+            {
+                var map = MapView.Active?.Map;
+                if (map == null) return null;
+
+                var uri = new Uri(serviceUrl);
+                return LayerFactory.Instance.CreateLayer(uri, map, layerName: layerName);
+            });
+
+            if (operationId.HasValue)
+            {
+                if (result != null)
+                    _loadProgress!.Complete(operationId.Value, layerName);
+                else
+                    _loadProgress!.Fail(operationId.Value, "The map service could not be opened.");
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            if (operationId.HasValue)
+                _loadProgress!.Fail(operationId.Value, ex.Message);
+            throw;
+        }
+        finally
+        {
+            _assetLoadGate.Release();
+        }
     }
 
     /// <summary>
@@ -186,14 +278,42 @@ public class LayerService
         if (!HasActiveMap())
             return null;
 
-        var mapView = MapView.Active!;
-        var layerName = CreateQuickViewLayerName(item, assetKey);
-        return await QueuedTask.Run(() =>
+        await _assetLoadGate.WaitAsync();
+        Guid? operationId = null;
+        try
         {
-            var map = mapView.Map;
-            return LayerFactory.Instance.CreateLayer(
-                new Uri(xyzUrl, UriKind.Absolute), map, layerName: layerName);
-        });
+            operationId = _loadProgress?.Begin(
+                item.Id, assetKey, "Quick view", null, 1, 1);
+            ReportStage(operationId, "Opening Quick view in ArcGIS Pro...");
+
+            var mapView = MapView.Active!;
+            var layerName = CreateQuickViewLayerName(item, assetKey);
+            var result = await QueuedTask.Run(() =>
+            {
+                var map = mapView.Map;
+                return LayerFactory.Instance.CreateLayer(
+                    new Uri(xyzUrl, UriKind.Absolute), map, layerName: layerName);
+            });
+
+            if (operationId.HasValue)
+            {
+                if (result != null)
+                    _loadProgress!.Complete(operationId.Value, assetKey);
+                else
+                    _loadProgress!.Fail(operationId.Value, "Quick view could not be opened.");
+            }
+            return result;
+        }
+        catch (Exception ex)
+        {
+            if (operationId.HasValue)
+                _loadProgress!.Fail(operationId.Value, ex.Message);
+            throw;
+        }
+        finally
+        {
+            _assetLoadGate.Release();
+        }
     }
 
     /// <summary>
@@ -219,7 +339,11 @@ public class LayerService
     /// Load a NetCDF asset using MakeMultidimensionalRasterLayer GP tool.
     /// Tries vsicurl streaming first, then falls back to download.
     /// </summary>
-    private async Task<Layer?> LoadNetCdfAssetAsync(StacAsset asset, string? assetKey, string layerName)
+    private async Task<Layer?> LoadNetCdfAssetAsync(
+        StacAsset asset,
+        string? assetKey,
+        string layerName,
+        Guid? operationId)
     {
         var href = asset.Href;
         var sw = Stopwatch.StartNew();
@@ -229,6 +353,7 @@ public class LayerService
         var cachedPath = FileDownloader.GetCachedPath(href);
         if (cachedPath != null)
         {
+            ReportStage(operationId, "Adding cached NetCDF file to the map...");
             Log($"NETCDF CACHE HIT: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms | {cachedPath}");
             return await LoadMultidimensionalLayer(cachedPath, layerName, assetKey, sw);
         }
@@ -238,6 +363,7 @@ public class LayerService
         {
             try
             {
+                ReportStage(operationId, "Opening remote NetCDF in ArcGIS Pro...");
                 SetGdalAuthHeaders();
                 var vsicurlPath = "/vsicurl/" + href;
                 var gpArgs = Geoprocessing.MakeValueArray(vsicurlPath, layerName);
@@ -261,11 +387,16 @@ public class LayerService
 
         // Tier 2: Download to temp, then load locally
         Log($"NETCDF DOWNLOAD START: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
-        var localPath = await FileDownloader.DownloadToTempAsync(href, _authService.ApiToken);
+        ReportStage(operationId, "Starting fallback download...");
+        var localPath = await FileDownloader.DownloadToTempAsync(
+            href,
+            _authService.ApiToken,
+            CreateDownloadProgress(operationId, asset.ExpectedSize));
         if (localPath == null)
             throw new InvalidOperationException($"Failed to download NetCDF asset from {href}");
 
         Log($"NETCDF DOWNLOAD DONE: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms | {localPath}");
+        ReportStage(operationId, "Adding the downloaded NetCDF file to the map...");
         return await LoadMultidimensionalLayer(localPath, layerName, assetKey, sw);
     }
 
@@ -305,6 +436,32 @@ public class LayerService
         });
         Log($"NETCDF LAYERFACTORY FALLBACK OK: {assetKey ?? "?"} | {sw.ElapsedMilliseconds}ms");
         return result;
+    }
+
+    private void ReportStage(Guid? operationId, string detail)
+    {
+        if (operationId.HasValue)
+            _loadProgress?.ReportStage(operationId.Value, detail);
+    }
+
+    private IProgress<DownloadProgress>? CreateDownloadProgress(
+        Guid? operationId,
+        long? expectedBytes) =>
+        operationId.HasValue && _loadProgress != null
+            ? new DirectProgress<DownloadProgress>(progress =>
+                _loadProgress.ReportDownload(
+                    operationId.Value,
+                    progress.BytesReceived,
+                    progress.TotalBytes ?? expectedBytes))
+            : null;
+
+    /// <summary>
+    /// Reports immediately; the UI-owned sink is responsible for dispatcher
+    /// marshalling. This keeps a queued byte update from overwriting a later phase.
+    /// </summary>
+    private sealed class DirectProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
     }
 
     /// <summary>

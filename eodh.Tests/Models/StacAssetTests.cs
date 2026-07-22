@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Xunit;
 using eodh.Models;
 
@@ -87,5 +88,31 @@ public class StacAssetTests
     {
         var asset = new StacAsset("https://example.com/thumb.png", "image/png", null, ["thumbnail"], null);
         Assert.False(asset.IsData);
+    }
+
+    [Fact]
+    public void ExpectedSize_DeserializesEodhSize()
+    {
+        const string json = """
+            {"href":"https://example.com/data.tif","size":530698801}
+            """;
+
+        var asset = JsonSerializer.Deserialize<StacAsset>(json);
+
+        Assert.NotNull(asset);
+        Assert.Equal(530698801, asset.ExpectedSize);
+    }
+
+    [Fact]
+    public void ExpectedSize_PrefersStandardFileExtensionSize()
+    {
+        const string json = """
+            {"href":"https://example.com/data.tif","size":100,"file:size":200}
+            """;
+
+        var asset = JsonSerializer.Deserialize<StacAsset>(json);
+
+        Assert.NotNull(asset);
+        Assert.Equal(200, asset.ExpectedSize);
     }
 }

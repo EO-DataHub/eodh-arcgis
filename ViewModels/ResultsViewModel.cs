@@ -432,7 +432,8 @@ internal class ResultItemViewModel : PropertyChangedBase
 
         LoadCommand = new RelayCommand(
             () => _ = LoadIntoMapAsync(),
-            () => AllAssets.Any(asset => asset.IsLoadable && asset.IsSelected));
+            () => !IsLoadingLayer &&
+                  AllAssets.Any(asset => asset.IsLoadable && asset.IsSelected));
         foreach (var asset in AllAssets)
         {
             asset.PropertyChanged += (_, args) =>
@@ -481,7 +482,11 @@ internal class ResultItemViewModel : PropertyChangedBase
     public bool IsLoadingLayer
     {
         get => _isLoadingLayer;
-        set => SetProperty(ref _isLoadingLayer, value);
+        set
+        {
+            if (SetProperty(ref _isLoadingLayer, value))
+                ((RelayCommand)LoadCommand).RaiseCanExecuteChanged();
+        }
     }
 
     public ICommand LoadCommand { get; }
@@ -627,15 +632,21 @@ internal class ResultItemViewModel : PropertyChangedBase
         {
             await _layerService.SetMapToOsgbAsync();
             var selected = AllAssets
-                .Where(a => a.IsSelected)
+                .Where(a => a.IsLoadable && a.IsSelected)
                 .Select(a => (a.Key, Asset: Item.Assets[a.Key]))
                 .ToList();
 
-            foreach (var (key, asset) in selected)
+            for (var index = 0; index < selected.Count; index++)
             {
+                var (key, asset) = selected[index];
                 try
                 {
-                    await _layerService.LoadAssetAsync(Item, asset, key);
+                    await _layerService.LoadAssetAsync(
+                        Item,
+                        asset,
+                        key,
+                        index + 1,
+                        selected.Count);
                 }
                 catch (Exception ex)
                 {

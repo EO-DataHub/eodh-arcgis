@@ -116,9 +116,17 @@ public record StacAsset(
     [property: JsonPropertyName("type")] string? MediaType,
     [property: JsonPropertyName("title")] string? Title,
     [property: JsonPropertyName("roles")] List<string>? Roles,
-    [property: JsonPropertyName("proj:epsg")] int? ProjEpsg
+    [property: JsonPropertyName("proj:epsg")] int? ProjEpsg,
+    [property: JsonPropertyName("size")] long? Size = null,
+    [property: JsonPropertyName("file:size")] long? FileSize = null
 )
 {
+    /// <summary>
+    /// Expected asset size advertised by EODH or the STAC file extension.
+    /// This is display metadata; actual download totals prefer HTTP headers.
+    /// </summary>
+    public long? ExpectedSize => FileSize ?? Size;
+
     /// <summary>
     /// Determine the human-readable file type from the media type or href extension.
     /// </summary>
