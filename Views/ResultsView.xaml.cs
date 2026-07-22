@@ -14,6 +14,13 @@ public partial class ResultsView : UserControl
     {
         InitializeComponent();
         DataContextChanged += ResultsView_DataContextChanged;
+        Loaded += ResultsView_Loaded;
+    }
+
+    private void ResultsView_Loaded(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (_viewModel?.SelectedItem != null)
+            RevealSelection(_viewModel.SelectedItem);
     }
 
     private void ResultsView_DataContextChanged(
@@ -29,6 +36,11 @@ public partial class ResultsView : UserControl
     }
 
     private void ResultsView_SelectionRevealRequested(ResultItemViewModel result)
+    {
+        RevealSelection(result);
+    }
+
+    private void RevealSelection(ResultItemViewModel result)
     {
         Dispatcher.BeginInvoke(
             new Action(() =>
