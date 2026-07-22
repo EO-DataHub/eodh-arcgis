@@ -97,7 +97,11 @@ internal class ResultsViewModel : PropertyChangedBase
 
     #region Public Methods
 
-    public void LoadResults(List<StacItem> items, SearchFilters? filters, string? collectionLicense = null)
+    public void LoadResults(
+        List<StacItem> items,
+        SearchFilters? filters,
+        string? collectionLicense = null,
+        int? totalCount = null)
     {
         SelectedItem = null;
         Results.Clear();
@@ -121,9 +125,14 @@ internal class ResultsViewModel : PropertyChangedBase
             Results.Add(vm);
         }
 
-        StatusMessage = filtered > 0
-            ? $"{Results.Count} results ({filtered} outside AOI excluded)"
-            : $"{items.Count} results";
+        StatusMessage = totalCount.HasValue
+            ? filtered > 0
+                ? $"{Results.Count} results ({totalCount.Value} total; " +
+                  $"{filtered} outside AOI excluded)"
+                : $"{Results.Count} results ({totalCount.Value} total)"
+            : filtered > 0
+                ? $"{Results.Count} results ({filtered} outside AOI excluded)"
+                : $"{items.Count} results";
 
         HasResults = Results.Count > 0;
         _ = RenderFootprintsAsync();

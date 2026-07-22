@@ -137,9 +137,13 @@ internal class MainDockpaneViewModel : DockPane
         base.OnHidden();
     }
 
-    private void OnSearchCompleted(List<Models.StacItem> results)
+    private void OnSearchCompleted(Services.StacSearchResult result)
     {
-        ResultsVM.LoadResults(results, SearchVM.CurrentFilters, SearchVM.SelectedCollection?.Collection.License);
+        ResultsVM.LoadResults(
+            result.Items,
+            SearchVM.CurrentFilters,
+            SearchVM.SelectedCollection?.Collection.License,
+            result.TotalCount);
         TimelineVM.LoadResults(ResultsVM.Results.Select(result => result.Item).ToList());
         SelectedTabIndex = 1;
     }

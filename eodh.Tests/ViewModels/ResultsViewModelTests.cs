@@ -75,6 +75,16 @@ public class ResultsViewModelTests
     }
 
     [Fact]
+    public void LoadResults_DisplaysTotalMatchingCount()
+    {
+        var vm = CreateVm();
+
+        vm.LoadResults(CreateTestItems(50), null, totalCount: 70123);
+
+        Assert.Equal("50 results (70123 total)", vm.StatusMessage);
+    }
+
+    [Fact]
     public void LoadSelectedCommand_CanExecute_WhenItemSelected()
     {
         var vm = CreateVm();

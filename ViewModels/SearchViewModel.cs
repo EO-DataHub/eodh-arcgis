@@ -24,7 +24,7 @@ namespace eodh.ViewModels;
 internal class SearchViewModel : PropertyChangedBase
 {
     private readonly StacClient _stacClient;
-    private readonly Action<List<StacItem>> _onSearchCompleted;
+    private readonly Action<StacSearchResult> _onSearchCompleted;
 
     private CatalogRoot? _selectedCatalog;
     private CatalogCollectionEntry? _selectedCollection;
@@ -42,7 +42,7 @@ internal class SearchViewModel : PropertyChangedBase
     private int _cloudCoverProbeVersion;
     private string _resultSummary = string.Empty;
 
-    public SearchViewModel(StacClient stacClient, Action<List<StacItem>> onSearchCompleted)
+    public SearchViewModel(StacClient stacClient, Action<StacSearchResult> onSearchCompleted)
     {
         _stacClient = stacClient;
         _onSearchCompleted = onSearchCompleted;
@@ -353,7 +353,7 @@ internal class SearchViewModel : PropertyChangedBase
             var result = await _stacClient.SearchAsync(SelectedCollection, filters);
 
             ResultSummary = $"Found {result.TotalCount} items ({result.Items.Count} shown).";
-            _onSearchCompleted.Invoke(result.Items);
+            _onSearchCompleted.Invoke(result);
         }
         catch (Exception ex)
         {
