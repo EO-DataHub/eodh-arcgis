@@ -33,6 +33,7 @@ public partial class ResultsView : UserControl
         Dispatcher.BeginInvoke(
             new Action(() =>
             {
+                ResultsList.SelectedItem = result;
                 ResultsList.UpdateLayout();
                 ResultsList.ScrollIntoView(result);
             }),
