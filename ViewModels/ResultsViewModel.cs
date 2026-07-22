@@ -630,7 +630,6 @@ internal class ResultItemViewModel : PropertyChangedBase
         IsLoadingLayer = true;
         try
         {
-            await _layerService.SetMapToOsgbAsync();
             var selected = AllAssets
                 .Where(a => a.IsLoadable && a.IsSelected)
                 .Select(a => (a.Key, Asset: Item.Assets[a.Key]))

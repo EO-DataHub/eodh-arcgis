@@ -259,7 +259,6 @@ internal sealed class WorkspaceRecordViewModel : PropertyChangedBase
         IsLoading = true;
         try
         {
-            await _layerService.SetMapToOsgbAsync();
             var selectedAssets = Assets
                 .Where(asset => asset.IsLoadable && asset.IsSelected)
                 .ToList();

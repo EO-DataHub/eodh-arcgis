@@ -1,4 +1,3 @@
-using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
 using Xunit;
 using eodh.Models;
@@ -104,19 +103,6 @@ public class LayerServiceTests
             "Test WMTS");
 
         Assert.NotNull(result);
-    }
-
-    [Fact]
-    public async Task SetMapToOsgbAsync_SetsSpatialReference27700()
-    {
-        if (!HasActiveMap())
-            return;
-
-        await _layerService.SetMapToOsgbAsync();
-
-        var sr = await QueuedTask.Run(() => MapView.Active?.Map?.SpatialReference);
-        Assert.NotNull(sr);
-        Assert.Equal(27700, sr!.Wkid);
     }
 
     [Fact]

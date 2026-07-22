@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using ArcGIS.Core.Geometry;
 using ArcGIS.Desktop.Core.Geoprocessing;
 using ArcGIS.Desktop.Framework.Threading.Tasks;
 using ArcGIS.Desktop.Mapping;
@@ -16,9 +15,6 @@ namespace eodh.Services;
 /// </summary>
 public class LayerService
 {
-    /// <summary>OSGB 1936 / British National Grid.</summary>
-    private const int OsgbEpsg = 27700;
-
     private readonly AuthService _authService;
     private readonly IAssetLoadProgressReporter? _loadProgress;
     private readonly SemaphoreSlim _assetLoadGate = new(1, 1);
@@ -314,23 +310,6 @@ public class LayerService
         {
             _assetLoadGate.Release();
         }
-    }
-
-    /// <summary>
-    /// Set the active map's spatial reference to OSGB (EPSG:27700).
-    /// </summary>
-    public async Task SetMapToOsgbAsync()
-    {
-        if (!HasActiveMap()) return;
-
-        await QueuedTask.Run(() =>
-        {
-            var map = MapView.Active?.Map;
-            if (map == null) return;
-
-            var osgb = SpatialReferenceBuilder.CreateSpatialReference(OsgbEpsg);
-            map.SetSpatialReference(osgb);
-        });
     }
 
     #region Private Methods
