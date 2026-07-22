@@ -211,10 +211,28 @@ public class StacClient
 
     public async Task<StacSearchResult> GetNextPageAsync(
         string nextUrl,
+        CancellationToken ct = default) =>
+        await GetNextPageAsync(new StacLink("next", nextUrl, null, null), ct);
+
+    public async Task<StacSearchResult> GetNextPageAsync(
+        StacLink nextLink,
         CancellationToken ct = default)
     {
         using var client = _authService.CreateHttpClient();
-        using var response = await client.GetAsync(nextUrl, ct);
+        using var request = new HttpRequestMessage(
+            string.Equals(nextLink.Method, "POST", StringComparison.OrdinalIgnoreCase)
+                ? HttpMethod.Post
+                : HttpMethod.Get,
+            nextLink.Href);
+        if (request.Method == HttpMethod.Post)
+        {
+            request.Content = new StringContent(
+                nextLink.Body?.GetRawText() ?? "{}",
+                Encoding.UTF8,
+                "application/json");
+        }
+
+        using var response = await client.SendAsync(request, ct);
         await ApiResponse.EnsureSuccessAsync(response, "search pagination", ct, _authService.ApiToken);
         var json = await response.Content.ReadAsStringAsync(ct);
         return CreateSearchResult(JsonSerializer.Deserialize<StacItemCollection>(json, JsonOptions));
@@ -373,7 +391,7 @@ public class StacClient
         var totalCount = itemCollection?.Context?.Matched
             ?? itemCollection?.NumberMatched
             ?? items.Count;
-        var nextLink = itemCollection?.Links?.FirstOrDefault(link => link.Rel == "next")?.Href;
+        var nextLink = itemCollection?.Links?.FirstOrDefault(link => link.Rel == "next");
         return new StacSearchResult(items, totalCount, nextLink);
     }
 
@@ -406,4 +424,7 @@ public class StacClient
 public record StacSearchResult(
     List<StacItem> Items,
     int TotalCount,
-    string? NextPageUrl);
+    StacLink? NextPageLink)
+{
+    public string? NextPageUrl => NextPageLink?.Href;
+}

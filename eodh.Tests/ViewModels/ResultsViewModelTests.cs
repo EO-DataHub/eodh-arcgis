@@ -19,6 +19,11 @@ public class ResultsViewModelTests
     private static ResultsViewModel CreateVm()
     {
         var handler = new FixtureHttpHandler();
+        return CreateVm(handler);
+    }
+
+    private static ResultsViewModel CreateVm(FixtureHttpHandler handler)
+    {
         var auth = new TestAuthService(handler);
         var stacClient = new StacClient(auth);
         var layerService = new LayerService(auth);
@@ -174,6 +179,53 @@ public class ResultsViewModelTests
 
         Assert.Single(vm.Results);
         Assert.Equal("License: OGL-UK-3.0", vm.Results[0].LicenseInfo);
+    }
+
+    [Fact]
+    public async Task Paging_UsesNextLinkAndCachesVisitedPages()
+    {
+        var handler = new FixtureHttpHandler();
+        handler.RegisterJson("page=2", """
+            {"type":"FeatureCollection","features":[{
+              "id":"item-2","collection":"sentinel2_ard",
+              "properties":{"datetime":"2026-02-01T10:00:00Z"},"assets":{}
+            }],"links":[],"numMatched":3}
+            """);
+        var vm = CreateVm(handler);
+        var firstPage = new StacSearchResult(
+            CreateTestItems(2),
+            3,
+            new StacLink(
+                "next", "https://eodatahub.org.uk/search?page=2", null, null));
+
+        vm.StartSearch(firstPage, new SearchFilters { Limit = 2 });
+
+        Assert.Equal("Page 1 of 2", vm.PageStatus);
+        Assert.False(vm.PreviousPageCommand.CanExecute(null));
+        Assert.True(vm.NextPageCommand.CanExecute(null));
+
+        vm.NextPageCommand.Execute(null);
+        await WaitUntilAsync(() => vm.CurrentPageNumber == 2 && !vm.IsPageLoading);
+
+        Assert.Equal("Page 2 of 2", vm.PageStatus);
+        Assert.Equal("1 results (3 total)", vm.StatusMessage);
+        Assert.True(vm.PreviousPageCommand.CanExecute(null));
+        Assert.False(vm.NextPageCommand.CanExecute(null));
+
+        vm.PreviousPageCommand.Execute(null);
+        Assert.Equal(1, vm.CurrentPageNumber);
+        vm.NextPageCommand.Execute(null);
+        Assert.Equal(2, vm.CurrentPageNumber);
+        Assert.Single(handler.Requests);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> predicate)
+    {
+        var timeout = DateTime.UtcNow.AddSeconds(3);
+        while (!predicate() && DateTime.UtcNow < timeout)
+            await Task.Delay(20);
+
+        Assert.True(predicate(), "Timed out waiting for pagination to complete.");
     }
 }
 

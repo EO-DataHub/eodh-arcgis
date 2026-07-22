@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using eodh.Models;
 using eodh.Services;
 using eodh.Tests.Helpers;
@@ -96,13 +97,18 @@ public class StacClientTests
     {
         var (client, handler) = CreateClient();
         handler.RegisterJson("/ceda/search", """
-            {"type":"FeatureCollection","features":[],"links":[],"context":{"matched":12}}
+            {"type":"FeatureCollection","features":[],"links":[
+              {"rel":"next","href":"https://example.test/page=2","method":"POST",
+               "body":{"token":"cursor-2"}}
+            ],"context":{"matched":12}}
             """);
 
         var result = await client.SearchAsync(CedaCatalog(), new SearchFilters());
 
         Assert.Equal(12, result.TotalCount);
         Assert.Empty(result.Items);
+        Assert.Equal("POST", result.NextPageLink?.Method);
+        Assert.Equal("cursor-2", result.NextPageLink?.Body?.GetProperty("token").GetString());
     }
 
     [Fact]
@@ -170,6 +176,30 @@ public class StacClientTests
         var result = await client.GetNextPageAsync("https://eodatahub.org.uk/search?page=2");
 
         Assert.Equal("https://example.test/page=3", result.NextPageUrl);
+    }
+
+    [Fact]
+    public async Task GetNextPageAsync_SendsAdvertisedPostBody()
+    {
+        var (client, handler) = CreateClient();
+        handler.RegisterJson("page=2", """
+            {"type":"FeatureCollection","features":[],"links":[],"numMatched":75}
+            """);
+        using var body = JsonDocument.Parse("""{"token":"cursor-2","limit":50}""");
+        var link = new StacLink(
+            "next",
+            "https://eodatahub.org.uk/search?page=2",
+            "application/geo+json",
+            null,
+            "POST",
+            body.RootElement.Clone());
+
+        var result = await client.GetNextPageAsync(link);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal(HttpMethod.Post, request.Method);
+        Assert.Contains("\"token\":\"cursor-2\"", request.Body);
+        Assert.Equal(75, result.TotalCount);
     }
 
     [Fact]

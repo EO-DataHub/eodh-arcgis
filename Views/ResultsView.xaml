@@ -14,10 +14,51 @@
 
     <DockPanel>
         <!-- Status bar -->
-        <StackPanel DockPanel.Dock="Bottom" Margin="8,4">
-            <TextBlock Text="{Binding StatusMessage}" Opacity="0.6" FontSize="11" />
-            <TextBlock Text="{Binding FootprintStatus}" Opacity="0.6" FontSize="10" />
-        </StackPanel>
+        <Grid DockPanel.Dock="Bottom" Margin="8,4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="{Binding StatusMessage}"
+                       Opacity="0.6"
+                       FontSize="11"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       ToolTip="{Binding StatusMessage}" />
+
+            <Button Grid.Column="1"
+                    Content="&#x2039; Previous"
+                    Command="{Binding PreviousPageCommand}"
+                    Visibility="{Binding HasPagingSession, Converter={StaticResource BoolToVis}}"
+                    Margin="8,0,0,0"
+                    Padding="7,2" />
+            <TextBlock Grid.Column="2"
+                       Text="{Binding PageStatus}"
+                       Visibility="{Binding HasPagingSession, Converter={StaticResource BoolToVis}}"
+                       VerticalAlignment="Center"
+                       Margin="8,0" />
+            <Button Grid.Column="3"
+                    Content="Next &#x203A;"
+                    Command="{Binding NextPageCommand}"
+                    Visibility="{Binding HasPagingSession, Converter={StaticResource BoolToVis}}"
+                    Padding="7,2" />
+
+            <TextBlock Grid.Row="1"
+                       Grid.ColumnSpan="4"
+                       Text="{Binding PaginationError}"
+                       Foreground="Firebrick"
+                       FontSize="10"
+                       TextWrapping="Wrap"
+                       Margin="0,3,0,0"
+                       Visibility="{Binding PaginationError, Converter={StaticResource NullToVis}}" />
+        </Grid>
 
         <!-- No results message -->
         <TextBlock Text="No results found"

@@ -60,6 +60,7 @@ internal class MainDockpaneViewModel : DockPane
         };
 
         _searchViewModel.AoiCleared += () => _resultsViewModel.ShowFootprints = false;
+        _resultsViewModel.PageChanged += items => _timelineViewModel.LoadResults(items);
     }
 
     #region Properties
@@ -139,12 +140,10 @@ internal class MainDockpaneViewModel : DockPane
 
     private void OnSearchCompleted(Services.StacSearchResult result)
     {
-        ResultsVM.LoadResults(
-            result.Items,
+        ResultsVM.StartSearch(
+            result,
             SearchVM.CurrentFilters,
-            SearchVM.SelectedCollection?.Collection.License,
-            result.TotalCount);
-        TimelineVM.LoadResults(ResultsVM.Results.Select(result => result.Item).ToList());
+            SearchVM.SelectedCollection?.Collection.License);
         SelectedTabIndex = 1;
     }
 

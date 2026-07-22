@@ -20,6 +20,7 @@ internal class ResultsViewModel : PropertyChangedBase
     private readonly ThumbnailCache _thumbnailCache;
     private readonly CommercialOrderService? _commercialOrderService;
     private readonly FootprintOverlayService _footprintOverlayService;
+    private readonly List<StacSearchResult> _pages = [];
 
     private ResultItemViewModel? _selectedItem;
     private bool _isLoading;
@@ -27,6 +28,16 @@ internal class ResultsViewModel : PropertyChangedBase
     private string _statusMessage = string.Empty;
     private string _footprintStatus = string.Empty;
     private bool _showFootprints = true;
+    private SearchFilters? _pagingFilters;
+    private string? _pagingCollectionLicense;
+    private string? _paginationError;
+    private bool _hasPagingSession;
+    private bool _isPageLoading;
+    private int _currentPageIndex = -1;
+    private int _pageSize = 50;
+    private int _totalCount;
+    private int _loadingPageNumber;
+    private int _pagingVersion;
 
     public ResultsViewModel(StacClient stacClient, LayerService layerService,
         ThumbnailCache thumbnailCache, CommercialOrderService? commercialOrderService = null,
@@ -39,6 +50,8 @@ internal class ResultsViewModel : PropertyChangedBase
         _footprintOverlayService = footprintOverlayService ?? new FootprintOverlayService();
 
         LoadSelectedCommand = new RelayCommand(ExecuteLoadSelected, () => SelectedItem != null);
+        PreviousPageCommand = new RelayCommand(ExecutePreviousPage, CanGoToPreviousPage);
+        NextPageCommand = new RelayCommand(ExecuteNextPage, CanGoToNextPage);
     }
 
     #region Properties
@@ -93,9 +106,70 @@ internal class ResultsViewModel : PropertyChangedBase
     }
 
     public ICommand LoadSelectedCommand { get; }
+    public ICommand PreviousPageCommand { get; }
+    public ICommand NextPageCommand { get; }
+
+    public bool HasPagingSession
+    {
+        get => _hasPagingSession;
+        private set => SetProperty(ref _hasPagingSession, value);
+    }
+
+    public bool IsPageLoading
+    {
+        get => _isPageLoading;
+        private set
+        {
+            if (SetProperty(ref _isPageLoading, value))
+                NotifyPaginationChanged();
+        }
+    }
+
+    public string? PaginationError
+    {
+        get => _paginationError;
+        private set => SetProperty(ref _paginationError, value);
+    }
+
+    public int CurrentPageNumber => HasPagingSession ? _currentPageIndex + 1 : 0;
+
+    public int TotalPages => !HasPagingSession
+        ? 0
+        : Math.Max(1, (int)Math.Ceiling((double)_totalCount / _pageSize));
+
+    public string PageStatus => !HasPagingSession
+        ? string.Empty
+        : IsPageLoading
+            ? $"Loading page {_loadingPageNumber}..."
+            : $"Page {CurrentPageNumber} of {TotalPages}";
+
+    public event Action<List<StacItem>>? PageChanged;
     #endregion
 
     #region Public Methods
+
+    public void StartSearch(
+        StacSearchResult firstPage,
+        SearchFilters? filters,
+        string? collectionLicense = null)
+    {
+        _pagingVersion++;
+        _pages.Clear();
+        _pages.Add(firstPage);
+        _pagingFilters = filters;
+        _pagingCollectionLicense = collectionLicense;
+        _pageSize = Math.Max(
+            1,
+            filters?.Limit ?? (firstPage.Items.Count > 0 ? firstPage.Items.Count : 50));
+        _totalCount = firstPage.TotalCount;
+        _currentPageIndex = -1;
+        _loadingPageNumber = 0;
+        PaginationError = null;
+        IsPageLoading = false;
+        HasPagingSession = true;
+
+        ShowPage(0);
+    }
 
     public void LoadResults(
         List<StacItem> items,
@@ -145,12 +219,22 @@ internal class ResultsViewModel : PropertyChangedBase
 
     public void ClearResults()
     {
+        _pagingVersion++;
+        _pages.Clear();
+        _pagingFilters = null;
+        _pagingCollectionLicense = null;
+        _currentPageIndex = -1;
+        _totalCount = 0;
+        HasPagingSession = false;
+        IsPageLoading = false;
+        PaginationError = null;
         SelectedItem = null;
         Results.Clear();
         HasResults = false;
         StatusMessage = string.Empty;
         FootprintStatus = string.Empty;
         _ = _footprintOverlayService.ClearAsync();
+        NotifyPaginationChanged();
     }
 
     #endregion
@@ -161,6 +245,80 @@ internal class ResultsViewModel : PropertyChangedBase
     {
         if (SelectedItem == null) return;
         await SelectedItem.LoadIntoMapAsync();
+    }
+
+    private bool CanGoToPreviousPage() =>
+        HasPagingSession && !IsPageLoading && _currentPageIndex > 0;
+
+    private bool CanGoToNextPage() =>
+        HasPagingSession && !IsPageLoading &&
+        (_currentPageIndex < _pages.Count - 1 ||
+         _pages.ElementAtOrDefault(_currentPageIndex)?.NextPageLink != null);
+
+    private void ExecutePreviousPage()
+    {
+        if (!CanGoToPreviousPage()) return;
+        PaginationError = null;
+        ShowPage(_currentPageIndex - 1);
+    }
+
+    private async void ExecuteNextPage()
+    {
+        if (!CanGoToNextPage()) return;
+
+        PaginationError = null;
+        var targetIndex = _currentPageIndex + 1;
+        if (targetIndex < _pages.Count)
+        {
+            ShowPage(targetIndex);
+            return;
+        }
+
+        var nextLink = _pages[_currentPageIndex].NextPageLink;
+        if (nextLink == null) return;
+
+        var requestVersion = _pagingVersion;
+        _loadingPageNumber = targetIndex + 1;
+        IsPageLoading = true;
+        try
+        {
+            var page = await _stacClient.GetNextPageAsync(nextLink);
+            if (requestVersion != _pagingVersion)
+                return;
+
+            _pages.Add(page);
+            ShowPage(targetIndex);
+        }
+        catch (Exception ex)
+        {
+            if (requestVersion == _pagingVersion)
+                PaginationError = $"Could not load page {targetIndex + 1}: {ex.Message}";
+        }
+        finally
+        {
+            if (requestVersion == _pagingVersion)
+                IsPageLoading = false;
+        }
+    }
+
+    private void ShowPage(int pageIndex)
+    {
+        if (pageIndex < 0 || pageIndex >= _pages.Count) return;
+
+        _currentPageIndex = pageIndex;
+        var page = _pages[pageIndex];
+        LoadResults(page.Items, _pagingFilters, _pagingCollectionLicense, _totalCount);
+        NotifyPaginationChanged();
+        PageChanged?.Invoke(Results.Select(result => result.Item).ToList());
+    }
+
+    private void NotifyPaginationChanged()
+    {
+        NotifyPropertyChanged(nameof(CurrentPageNumber));
+        NotifyPropertyChanged(nameof(TotalPages));
+        NotifyPropertyChanged(nameof(PageStatus));
+        ((RelayCommand)PreviousPageCommand).RaiseCanExecuteChanged();
+        ((RelayCommand)NextPageCommand).RaiseCanExecuteChanged();
     }
 
     private async Task RenderFootprintsAsync()

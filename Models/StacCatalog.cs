@@ -181,7 +181,9 @@ public record StacLink(
     [property: JsonPropertyName("rel")] string Rel,
     [property: JsonPropertyName("href")] string Href,
     [property: JsonPropertyName("type")] string? Type,
-    [property: JsonPropertyName("title")] string? Title
+    [property: JsonPropertyName("title")] string? Title,
+    [property: JsonPropertyName("method")] string? Method = null,
+    [property: JsonPropertyName("body")] JsonElement? Body = null
 );
 
 /// <summary>
