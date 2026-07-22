@@ -58,7 +58,7 @@
                   className="ViewModels.MainDockpaneViewModel"
                   dock="group"
                   dockWith="esri_core_projectDockPane"
-                  width="420">
+                  width="520">
           <content className="Views.MainDockpaneView" />
         </dockPane>
       </dockPanes>
