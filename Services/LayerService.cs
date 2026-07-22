@@ -20,7 +20,6 @@ public class LayerService
     private const int OsgbEpsg = 27700;
 
     private readonly AuthService _authService;
-    private Layer? _quickViewLayer;
 
     public LayerService(AuthService authService)
     {
@@ -176,7 +175,7 @@ public class LayerService
     }
 
     /// <summary>
-    /// Add an asset as a native XYZ web-tile layer, replacing the previous Quick view layer.
+    /// Add an asset as a native XYZ web-tile layer.
     /// </summary>
     public async Task<Layer?> LoadQuickViewAsync(StacItem item, string assetKey)
     {
@@ -189,36 +188,12 @@ public class LayerService
 
         var mapView = MapView.Active!;
         var layerName = CreateQuickViewLayerName(item, assetKey);
-        var (layer, extent) = await QueuedTask.Run(() =>
+        return await QueuedTask.Run(() =>
         {
             var map = mapView.Map;
-            var newLayer = LayerFactory.Instance.CreateLayer(
+            return LayerFactory.Instance.CreateLayer(
                 new Uri(xyzUrl, UriKind.Absolute), map, layerName: layerName);
-
-            if (_quickViewLayer != null &&
-                map.GetLayersAsFlattenedList().Contains(_quickViewLayer))
-            {
-                map.RemoveLayer(_quickViewLayer);
-            }
-
-            _quickViewLayer = newLayer;
-            return (newLayer, CreateQuickViewExtent(item, map.SpatialReference));
         });
-
-        if (extent != null)
-        {
-            try
-            {
-                await mapView.ZoomToAsync(
-                    extent, TimeSpan.FromMilliseconds(300), maintainViewDirection: true);
-            }
-            catch (Exception)
-            {
-                // The layer is already loaded; a view change should not turn that into a failure.
-            }
-        }
-
-        return layer;
     }
 
     /// <summary>
@@ -353,23 +328,6 @@ public class LayerService
         var shortId = item.Id.Length > 60 ? item.Id[..60] : item.Id;
         var name = $"Quick view - {item.Collection ?? "item"} - {shortId} ({assetKey})";
         return name.Length > 128 ? name[..128] : name;
-    }
-
-    private static Envelope? CreateQuickViewExtent(
-        StacItem item,
-        SpatialReference targetSpatialReference)
-    {
-        if (item.Bbox is not { Count: >= 4 } bbox ||
-            bbox.Take(4).Any(value => !double.IsFinite(value)) ||
-            bbox[0] >= bbox[2] || bbox[1] >= bbox[3])
-        {
-            return null;
-        }
-
-        var wgs84 = SpatialReferenceBuilder.CreateSpatialReference(4326);
-        var extent = EnvelopeBuilderEx.CreateEnvelope(
-            bbox[0], bbox[1], bbox[2], bbox[3], wgs84);
-        return GeometryEngine.Instance.Project(extent, targetSpatialReference) as Envelope;
     }
 
     private static readonly string LogPath = Path.Combine(Path.GetTempPath(), "eodh_layer_load.log");
