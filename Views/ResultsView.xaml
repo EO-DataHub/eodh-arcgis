@@ -73,10 +73,22 @@
         <ListView x:Name="ResultsList"
                   Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}"
                   ItemsSource="{Binding Results}"
-                  SelectedItem="{Binding SelectedItem}"
+                  SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
                   SelectionChanged="ResultsList_SelectionChanged"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                   BorderThickness="0">
+
+            <ListView.Resources>
+                <!-- Keep programmatic/carousel selection as prominent as mouse selection. -->
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"
+                                 Color="#C7E8F6" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}"
+                                 Color="#C7E8F6" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}"
+                                 Color="Black" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}"
+                                 Color="Black" />
+            </ListView.Resources>
 
             <ListView.ItemsPanel>
                 <ItemsPanelTemplate>
@@ -90,7 +102,6 @@
                     <Setter Property="Background" Value="Transparent" />
                     <Style.Triggers>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Background" Value="#303078C0" />
                             <Setter Property="BorderBrush" Value="#FF3078C0" />
                             <Setter Property="BorderThickness" Value="3,0,0,0" />
                         </Trigger>
