@@ -52,7 +52,7 @@
                 <DockPanel>
                     <views:TimelineView DataContext="{Binding TimelineVM}"
                                         DockPanel.Dock="Top"
-                                        Height="80" />
+                                        Height="92" />
                     <views:ResultsView DataContext="{Binding ResultsVM}" />
                 </DockPanel>
             </TabItem>
