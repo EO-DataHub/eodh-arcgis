@@ -110,6 +110,27 @@ public class ResultsViewModelTests
     }
 
     [Fact]
+    public void SelectByItemId_RequestsRevealEvenWhenItemIsAlreadySelected()
+    {
+        var vm = CreateVm();
+        vm.LoadResults(CreateTestItems(3), null);
+        var revealCount = 0;
+        ResultItemViewModel? revealed = null;
+        vm.SelectionRevealRequested += result =>
+        {
+            revealCount++;
+            revealed = result;
+        };
+
+        vm.SelectByItemId("item-1");
+        vm.SelectByItemId("item-1");
+
+        Assert.Same(vm.Results[1], vm.SelectedItem);
+        Assert.Same(vm.Results[1], revealed);
+        Assert.Equal(2, revealCount);
+    }
+
+    [Fact]
     public void LoadResults_PassesAoiBbox_ToResultItems()
     {
         var vm = CreateVm();

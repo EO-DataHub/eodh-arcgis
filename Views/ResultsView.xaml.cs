@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Windows.Controls;
 using System.Windows.Navigation;
 using System.Windows.Threading;
-using eodh.Models;
 using eodh.ViewModels;
 
 namespace eodh.Views;
@@ -22,19 +21,21 @@ public partial class ResultsView : UserControl
         System.Windows.DependencyPropertyChangedEventArgs e)
     {
         if (_viewModel != null)
-            _viewModel.PageChanged -= ResultsView_PageChanged;
+            _viewModel.SelectionRevealRequested -= ResultsView_SelectionRevealRequested;
 
         _viewModel = e.NewValue as ResultsViewModel;
         if (_viewModel != null)
-            _viewModel.PageChanged += ResultsView_PageChanged;
+            _viewModel.SelectionRevealRequested += ResultsView_SelectionRevealRequested;
     }
 
-    private void ResultsView_PageChanged(List<StacItem> items)
+    private void ResultsView_SelectionRevealRequested(ResultItemViewModel result)
     {
-        if (items.Count == 0) return;
-
         Dispatcher.BeginInvoke(
-            new Action(() => ResultsList.ScrollIntoView(ResultsList.Items[0])),
+            new Action(() =>
+            {
+                ResultsList.UpdateLayout();
+                ResultsList.ScrollIntoView(result);
+            }),
             DispatcherPriority.Loaded);
     }
 

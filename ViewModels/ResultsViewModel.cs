@@ -144,6 +144,7 @@ internal class ResultsViewModel : PropertyChangedBase
             : $"Page {CurrentPageNumber} of {TotalPages}";
 
     public event Action<List<StacItem>>? PageChanged;
+    public event Action<ResultItemViewModel>? SelectionRevealRequested;
     #endregion
 
     #region Public Methods
@@ -214,7 +215,10 @@ internal class ResultsViewModel : PropertyChangedBase
 
     public void SelectByItemId(string itemId)
     {
-        SelectedItem = Results.FirstOrDefault(r => r.Item.Id == itemId);
+        var result = Results.FirstOrDefault(r => r.Item.Id == itemId);
+        SelectedItem = result;
+        if (result != null)
+            SelectionRevealRequested?.Invoke(result);
     }
 
     public void ClearResults()
