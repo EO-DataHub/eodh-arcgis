@@ -142,7 +142,7 @@
                              FontFamily="Segoe MDL2 Assets"
                              FontSize="12"
                              BaselineAlignment="Center" />
-                        <Run Text="  Workspace Documentation" />
+                        <Run Text="  Workspace documentation" />
                     </Hyperlink>
                 </TextBlock>
                 <TextBlock FontSize="11">
@@ -153,7 +153,7 @@
                              FontFamily="Segoe MDL2 Assets"
                              FontSize="12"
                              BaselineAlignment="Center" />
-                        <Run Text="  Open EODH workspace credentials" />
+                        <Run Text="  Get workspace credentials" />
                     </Hyperlink>
                 </TextBlock>
             </StackPanel>
