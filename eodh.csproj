@@ -25,6 +25,9 @@
     <Content Include="DarkImages\AddInDesktop32.png" />
     <Resource Include="Images\Brand\eodh-logo-colour.png" />
     <Resource Include="Images\Brand\eodh-mark.png" />
+    <!-- Canonical EODH render recipes mirrored from eodhp-rc-ui. -->
+    <EmbeddedResource Include="Resources\configFromServer.json"
+                      LogicalName="eodh.Resources.configFromServer.json" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Properties\launchSettings.json" />
