@@ -26,7 +26,7 @@ The **EODH** tab then appears in the ArcGIS Pro ribbon.
 2. Select Production, Staging, or Test.
 3. Enter the **Workspace name**.
 4. Paste the **Workspace API key** — use the API Key, not the Token ID.
-5. Select **Sign In**.
+5. Select **Connect**.
 
 ![EODH workspace sign-in form](Images/login.png)
 

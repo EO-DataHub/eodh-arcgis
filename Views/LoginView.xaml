@@ -10,18 +10,63 @@
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
 
-    <Grid Margin="16">
-        <StackPanel VerticalAlignment="Center" MaxWidth="350">
-            <TextBlock Text="EO Data Hub"
-                       FontSize="18" FontWeight="SemiBold"
+    <Grid Margin="16" ClipToBounds="True">
+        <!-- A restrained orbital motif echoes the EO DataHub identity while
+             leaving the native ArcGIS surface and controls intact. -->
+        <Viewbox Stretch="UniformToFill"
+                 IsHitTestVisible="False"
+                 Opacity="0.5">
+            <Canvas Width="520" Height="620">
+                <Path Data="M -80,210 C 80,10 310,18 610,170"
+                      Stroke="#4C72BA"
+                      StrokeThickness="1"
+                      Opacity="0.24" />
+                <Path Data="M -60,58 C 130,112 302,240 600,274"
+                      Stroke="#BDCFEB"
+                      StrokeThickness="1"
+                      Opacity="0.32" />
+                <Ellipse Canvas.Left="63"
+                         Canvas.Top="121"
+                         Width="7"
+                         Height="7"
+                         Fill="#4C72BA"
+                         Opacity="0.24" />
+                <Ellipse Canvas.Left="340"
+                         Canvas.Top="69"
+                         Width="10"
+                         Height="10"
+                         Fill="#4C72BA"
+                         Opacity="0.18" />
+            </Canvas>
+        </Viewbox>
+
+        <StackPanel VerticalAlignment="Center"
+                    MaxWidth="350"
+                    Margin="0,12">
+            <Border Background="#FFF5F7FB"
+                    BorderBrush="#204C72BA"
+                    BorderThickness="1"
+                    Padding="10,4"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,14">
+                <Image Source="/eodh;component/Images/Brand/eodh-logo-colour.png"
+                       Width="218"
+                       Height="81"
+                       Stretch="Uniform" />
+            </Border>
+
+            <TextBlock Text="Connect your workspace"
+                       FontSize="20"
+                       FontWeight="SemiBold"
                        HorizontalAlignment="Center"
-                       Margin="0,0,0,8" />
+                       Margin="0,0,0,7" />
 
             <TextBlock Text="Sign in with your EODH workspace credentials to search and access satellite imagery."
                        TextWrapping="Wrap"
+                       TextAlignment="Center"
                        HorizontalAlignment="Center"
                        Margin="0,0,0,24"
-                       Opacity="0.7" />
+                       Opacity="0.72" />
 
             <!-- Workspace Name -->
             <TextBlock Text="Workspace name" Margin="0,0,0,4" />
@@ -33,13 +78,13 @@
             <PasswordBox x:Name="ApiTokenBox"
                          Margin="0,0,0,4" />
             <TextBlock Text="Paste the API Key, not the Token ID."
-                       FontSize="11" Opacity="0.7" Margin="0,0,0,4" />
+                       FontSize="11" Opacity="0.7" Margin="0,0,0,5" />
             <TextBlock FontSize="11" Margin="0,0,0,16">
                 <Hyperlink NavigateUri="https://docs.eodatahub.org.uk/Getting-Started/workspaces/workspace-credentials/"
-                           RequestNavigate="OpenLink_RequestNavigate">Open workspace documentation</Hyperlink>
+                           RequestNavigate="OpenLink_RequestNavigate">EODH documentation</Hyperlink>
                 <LineBreak />
                 <Hyperlink NavigateUri="{Binding WorkspaceCredentialsUri}"
-                           RequestNavigate="OpenLink_RequestNavigate">Open workspace credentials</Hyperlink>
+                           RequestNavigate="OpenLink_RequestNavigate">Open EODH workspace credentials</Hyperlink>
             </TextBlock>
 
             <!-- Error message -->
@@ -50,15 +95,19 @@
                        Margin="0,0,0,12" />
 
             <!-- Login button -->
-            <Button Content="Sign In"
+            <Button Content="Connect"
                     Command="{Binding LoginCommand}"
                     HorizontalAlignment="Stretch"
-                    Padding="8,6"
+                    Padding="8,7"
+                    Background="#4C72BA"
+                    BorderBrush="#4C72BA"
+                    Foreground="White"
                     IsDefault="True" />
 
             <!-- Loading indicator -->
             <ProgressBar IsIndeterminate="True"
                          Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"
+                         Foreground="#4C72BA"
                          Margin="0,8,0,0"
                          Height="3" />
         </StackPanel>

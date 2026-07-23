@@ -11,6 +11,24 @@
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis" />
+        <Style x:Key="BrandHeaderActionButtonStyle"
+               TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="#4C72BA" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#184C72BA" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#304C72BA" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -21,26 +39,70 @@
         <!-- Main content (shown when logged in) -->
         <DockPanel Visibility="{Binding IsLoggedIn, Converter={StaticResource BoolToVis}}">
 
-            <!-- User info header -->
-            <Grid DockPanel.Dock="Top" Margin="8,6,8,2">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock VerticalAlignment="Center" Opacity="0.7" FontSize="11">
-                    <Run Text="Signed in as " />
-                    <Run Text="{Binding LoggedInUsername, Mode=OneWay}" FontWeight="SemiBold" />
-                    <Run Text=" (" /><Run Text="{Binding LoggedInEnvironment, Mode=OneWay}" /><Run Text=")" />
-                </TextBlock>
-                <StackPanel Grid.Column="1" Orientation="Vertical">
-                    <Button Content="Log out"
-                            Command="{Binding LogoutCommand}"
-                            Padding="8,2" FontSize="11" />
-                    <Button Content="Switch workspace"
-                            Command="{Binding SwitchWorkspaceCommand}"
-                            Padding="8,2" FontSize="11" Margin="0,4,0,0" />
-                </StackPanel>
-            </Grid>
+            <!-- Compact EO DataHub header. The native surface and typography are
+                 preserved; brand identity comes from the mark and accent colour. -->
+            <Border DockPanel.Dock="Top"
+                    Background="#104C72BA"
+                    BorderBrush="#4C72BA"
+                    BorderThickness="0,0,0,2"
+                    Padding="9,7,7,6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Image Grid.RowSpan="2"
+                           Source="/eodh;component/Images/Brand/eodh-mark.png"
+                           Width="35"
+                           Height="35"
+                           Stretch="Uniform"
+                           VerticalAlignment="Center"
+                           Margin="0,0,9,0" />
+
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding LoggedInUsername, Mode=OneWay}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Bottom"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding LoggedInUsername, Mode=OneWay}" />
+                    <TextBlock Grid.Row="1"
+                               Grid.Column="1"
+                               FontSize="10"
+                               Opacity="0.7"
+                               VerticalAlignment="Top"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding LoggedInEnvironment, Mode=OneWay}">
+                        <Run Text="•  " />
+                        <Run Text="{Binding LoggedInEnvironment, Mode=OneWay}" />
+                    </TextBlock>
+
+                    <StackPanel Grid.RowSpan="2"
+                                Grid.Column="2"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="8,0,0,0">
+                        <Button Content="Switch"
+                                ToolTip="Switch workspace"
+                                Command="{Binding SwitchWorkspaceCommand}"
+                                Style="{StaticResource BrandHeaderActionButtonStyle}" />
+                        <Border Width="1"
+                                Height="18"
+                                Background="#384C72BA"
+                                Margin="2,0"
+                                VerticalAlignment="Center" />
+                        <Button Content="Log out"
+                                Command="{Binding LogoutCommand}"
+                                Style="{StaticResource BrandHeaderActionButtonStyle}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
 
             <!-- Dockpane-wide asset activity. Bind through the main view model so
                  the data contexts inherited by the tab contents remain unchanged. -->

@@ -18,11 +18,13 @@
     <None Remove="eodh.Tests\**" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Config.daml" />    
+    <Content Include="Config.daml" />
     <Content Include="Images\AddInDesktop16.png" />
     <Content Include="Images\AddInDesktop32.png" />
     <Content Include="DarkImages\AddInDesktop16.png" />
-    <Content Include="DarkImages\AddInDesktop32.png" />    
+    <Content Include="DarkImages\AddInDesktop32.png" />
+    <Resource Include="Images\Brand\eodh-logo-colour.png" />
+    <Resource Include="Images\Brand\eodh-mark.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Properties\launchSettings.json" />
