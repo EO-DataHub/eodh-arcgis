@@ -138,7 +138,7 @@
                     <Hyperlink NavigateUri="https://docs.eodatahub.org.uk/Getting-Started/workspaces/workspace-credentials/"
                                RequestNavigate="OpenLink_RequestNavigate"
                                ToolTip="Open the EODH workspace documentation">
-                        <Run Text="&#xE8A5;"
+                        <Run Text="&#xE8F1;"
                              FontFamily="Segoe MDL2 Assets"
                              FontSize="12"
                              BaselineAlignment="Center" />
