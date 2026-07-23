@@ -19,7 +19,6 @@ internal static class TitilerXyzUrlBuilder
 
     public static bool CanBuild(
         StacItem item,
-        string assetKey,
         string? renderId = null)
     {
         var configuredRender = FindConfiguredRender(item.Collection, renderId);
@@ -29,22 +28,21 @@ internal static class TitilerXyzUrlBuilder
             return false;
         }
 
-        var firstRenderAsset = configuredRender.Value.Render.Assets?.FirstOrDefault();
-        return !string.IsNullOrWhiteSpace(firstRenderAsset) &&
-               string.Equals(firstRenderAsset, assetKey, StringComparison.Ordinal) &&
-               item.Assets?.ContainsKey(assetKey) == true &&
+        var renderAssets = configuredRender.Value.Render.Assets;
+        return renderAssets is { Count: > 0 } &&
+               item.Assets != null &&
+               renderAssets.All(item.Assets.ContainsKey) &&
                ResolveSourceUrl(item, configuredRender.Value.Render) != null;
     }
 
     public static string? Build(
         string hubBaseUrl,
         StacItem item,
-        string assetKey,
         string? renderId = null)
     {
         var configuredRender = FindConfiguredRender(item.Collection, renderId);
         if (configuredRender == null ||
-            !CanBuild(item, assetKey, configuredRender.Value.Id))
+            !CanBuild(item, configuredRender.Value.Id))
         {
             return null;
         }
@@ -99,6 +97,14 @@ internal static class TitilerXyzUrlBuilder
             $"{parameter.Key}={Encode(parameter.Value)}"));
 
         return $"{hubBaseUrl.TrimEnd('/')}/titiler/{endpoint}?{query}";
+    }
+
+    public static string? GetDefaultRenderTitle(StacItem item)
+    {
+        var configuredRender = FindConfiguredRender(item.Collection, renderId: null);
+        return configuredRender == null
+            ? null
+            : configuredRender.Value.Render.Title ?? configuredRender.Value.Id;
     }
 
     private static (string Id, RenderConfig Render)? FindConfiguredRender(

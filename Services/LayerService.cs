@@ -263,13 +263,16 @@ public class LayerService
     }
 
     /// <summary>
-    /// Add an asset as a native XYZ web-tile layer.
+    /// Add the item's default configured render as a native XYZ web-tile layer.
     /// </summary>
-    public async Task<Layer?> LoadQuickViewAsync(StacItem item, string assetKey)
+    public async Task<Layer?> LoadQuickViewAsync(StacItem item)
     {
-        var xyzUrl = TitilerXyzUrlBuilder.Build(_authService.BaseUrl, item, assetKey)
+        var renderTitle = TitilerXyzUrlBuilder.GetDefaultRenderTitle(item)
             ?? throw new InvalidOperationException(
-                $"Asset '{assetKey}' is not available for Quick view.");
+                "This item does not have a default Quick view render.");
+        var xyzUrl = TitilerXyzUrlBuilder.Build(_authService.BaseUrl, item)
+            ?? throw new InvalidOperationException(
+                "The default Quick view render is not available for this item.");
 
         if (!HasActiveMap())
             return null;
@@ -279,11 +282,11 @@ public class LayerService
         try
         {
             operationId = _loadProgress?.Begin(
-                item.Id, assetKey, "Quick view", null, 1, 1);
+                item.Id, renderTitle, "Quick view", null, 1, 1);
             ReportStage(operationId, "Opening Quick view in ArcGIS Pro...");
 
             var mapView = MapView.Active!;
-            var layerName = CreateQuickViewLayerName(item, assetKey);
+            var layerName = CreateQuickViewLayerName(item, renderTitle);
             var result = await QueuedTask.Run(() =>
             {
                 var map = mapView.Map;
@@ -294,7 +297,7 @@ public class LayerService
             if (operationId.HasValue)
             {
                 if (result != null)
-                    _loadProgress!.Complete(operationId.Value, assetKey);
+                    _loadProgress!.Complete(operationId.Value, renderTitle);
                 else
                     _loadProgress!.Fail(operationId.Value, "Quick view could not be opened.");
             }
@@ -459,10 +462,10 @@ public class LayerService
         return LayerFactory.Instance.CreateLayer(uri, map, layerName: layerName);
     }
 
-    private static string CreateQuickViewLayerName(StacItem item, string assetKey)
+    private static string CreateQuickViewLayerName(StacItem item, string renderTitle)
     {
         var shortId = item.Id.Length > 60 ? item.Id[..60] : item.Id;
-        var name = $"Quick view - {item.Collection ?? "item"} - {shortId} ({assetKey})";
+        var name = $"Quick view - {item.Collection ?? "item"} - {shortId} ({renderTitle})";
         return name.Length > 128 ? name[..128] : name;
     }
 

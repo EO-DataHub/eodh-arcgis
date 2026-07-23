@@ -219,7 +219,6 @@
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
-                                                            <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
                                                         <CheckBox IsChecked="{Binding IsSelected}"
                                                                  IsEnabled="{Binding IsLoadable}"
@@ -269,27 +268,26 @@
                                                                 </TextBlock.Style>
                                                             </TextBlock>
                                                         </Border>
-                                                        <Button Grid.Column="2"
-                                                                Content="Quick view"
-                                                                Command="{Binding QuickViewCommand}"
-                                                                IsEnabled="{Binding IsQuickViewAvailable}"
-                                                                Margin="6,0,0,0"
-                                                                Padding="5,1"
-                                                                FontSize="9"
-                                                                HorizontalAlignment="Right"
-                                                                ToolTip="Add a fast XYZ preview of this asset to the active map" />
                                                     </Grid>
                                                 </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <Button Content="Load Selected Assets"
-                                            Command="{Binding LoadCommand}"
-                                            Visibility="{Binding IsAssetsPopupOpen, Converter={StaticResource BoolToVis}}"
-                                            Margin="0,4,0,0"
-                                            FontSize="10"
-                                            Padding="6,3"
-                                            HorizontalAlignment="Left" />
+                                    <StackPanel Orientation="Horizontal"
+                                                Visibility="{Binding IsAssetsPopupOpen, Converter={StaticResource BoolToVis}}"
+                                                Margin="0,4,0,0">
+                                        <Button Content="Quick view"
+                                                Command="{Binding QuickViewCommand}"
+                                                Visibility="{Binding IsQuickViewAvailable, Converter={StaticResource BoolToVis}}"
+                                                Margin="0,0,6,0"
+                                                FontSize="10"
+                                                Padding="6,3"
+                                                ToolTip="Add the default rendered preview for this item to the active map" />
+                                        <Button Content="Load Selected Assets"
+                                                Command="{Binding LoadCommand}"
+                                                FontSize="10"
+                                                Padding="6,3" />
+                                    </StackPanel>
                                 </StackPanel>
 
                                 <!-- Loading indicator for this item -->

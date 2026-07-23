@@ -421,11 +421,7 @@ internal class ResultItemViewModel : PropertyChangedBase
                 DisplayName = kv.Value.Title ?? kv.Key,
                 FileType = kv.Value.FileType,
                 IsLoadable = kv.Value.IsLoadable,
-                IsSelected = kv.Value.IsLoadable && defaultAssetKeys.Contains(kv.Key),
-                IsQuickViewAvailable = TitilerXyzUrlBuilder.CanBuild(Item, kv.Key),
-                QuickViewCommand = TitilerXyzUrlBuilder.CanBuild(Item, kv.Key)
-                    ? new RelayCommand(() => _ = LoadQuickViewAsync(kv.Key))
-                    : null
+                IsSelected = kv.Value.IsLoadable && defaultAssetKeys.Contains(kv.Key)
             })
             .ToList();
         HasDefaultAssetSelection = AllAssets.Any(asset => asset.IsSelected);
@@ -434,6 +430,12 @@ internal class ResultItemViewModel : PropertyChangedBase
             () => _ = LoadIntoMapAsync(),
             () => !IsLoadingLayer &&
                   AllAssets.Any(asset => asset.IsLoadable && asset.IsSelected));
+        IsQuickViewAvailable = TitilerXyzUrlBuilder.CanBuild(Item);
+        QuickViewCommand = IsQuickViewAvailable
+            ? new RelayCommand(
+                () => _ = LoadQuickViewAsync(),
+                () => !IsLoadingLayer)
+            : null;
         foreach (var asset in AllAssets)
         {
             asset.PropertyChanged += (_, args) =>
@@ -485,11 +487,17 @@ internal class ResultItemViewModel : PropertyChangedBase
         set
         {
             if (SetProperty(ref _isLoadingLayer, value))
+            {
                 ((RelayCommand)LoadCommand).RaiseCanExecuteChanged();
+                if (QuickViewCommand is RelayCommand quickViewCommand)
+                    quickViewCommand.RaiseCanExecuteChanged();
+            }
         }
     }
 
     public ICommand LoadCommand { get; }
+    public bool IsQuickViewAvailable { get; }
+    public ICommand? QuickViewCommand { get; }
     public ICommand DefaultActionCommand { get; }
     public bool HasDefaultAssetSelection { get; }
 
@@ -675,12 +683,12 @@ internal class ResultItemViewModel : PropertyChangedBase
             IsAssetsPopupOpen = true;
     }
 
-    private async Task LoadQuickViewAsync(string assetKey)
+    private async Task LoadQuickViewAsync()
     {
         IsLoadingLayer = true;
         try
         {
-            var layer = await _layerService.LoadQuickViewAsync(Item, assetKey);
+            var layer = await _layerService.LoadQuickViewAsync(Item);
             if (layer == null)
             {
                 ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
@@ -691,7 +699,7 @@ internal class ResultItemViewModel : PropertyChangedBase
         catch (Exception ex)
         {
             ArcGIS.Desktop.Framework.Dialogs.MessageBox.Show(
-                $"Failed to open Quick view for asset '{assetKey}'.\n\n{ex.Message}",
+                $"Failed to open Quick view for this item.\n\n{ex.Message}",
                 "EODH - Quick View Error");
         }
         finally
@@ -897,8 +905,6 @@ internal class AssetDetailViewModel : PropertyChangedBase
     public required string DisplayName { get; init; }
     public required string FileType { get; init; }
     public required bool IsLoadable { get; init; }
-    public bool IsQuickViewAvailable { get; init; }
-    public ICommand? QuickViewCommand { get; init; }
 
     public bool IsSelected
     {

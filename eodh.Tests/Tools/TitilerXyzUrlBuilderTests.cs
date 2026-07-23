@@ -8,7 +8,7 @@ namespace eodh.Tests.Tools;
 public class TitilerXyzUrlBuilderTests
 {
     [Fact]
-    public void Build_CreatesAssetSpecificXyzUrl()
+    public void Build_CreatesDefaultRenderXyzUrl()
     {
         var item = CreateItem(
             "https://eodatahub.org.uk/api/catalogue/stac/collections/s2/items/item 1",
@@ -17,7 +17,7 @@ public class TitilerXyzUrlBuilderTests
             collection: "sentinel2_ard");
 
         var result = TitilerXyzUrlBuilder.Build(
-            "https://eodatahub.org.uk/", item, "cog");
+            "https://eodatahub.org.uk/", item);
 
         Assert.NotNull(result);
         Assert.StartsWith(
@@ -51,7 +51,7 @@ public class TitilerXyzUrlBuilderTests
             collection: "sentinel1_ard");
 
         var result = TitilerXyzUrlBuilder.Build(
-            "https://eodatahub.org.uk", item, "data");
+            "https://eodatahub.org.uk", item);
 
         Assert.NotNull(result);
         Assert.Contains(
@@ -63,6 +63,9 @@ public class TitilerXyzUrlBuilderTests
         Assert.DoesNotContain("bidx=2", result);
         Assert.DoesNotContain("color_formula=", result);
         Assert.DoesNotContain("nodata=", result);
+        Assert.Equal(
+            "Backscatter VV (Vertical-Vertical)",
+            TitilerXyzUrlBuilder.GetDefaultRenderTitle(item));
     }
 
     [Fact]
@@ -80,7 +83,7 @@ public class TitilerXyzUrlBuilderTests
             collection: "sentinel1_ard");
 
         var result = TitilerXyzUrlBuilder.Build(
-            "https://eodatahub.org.uk", item, "data", renderId: "VH");
+            "https://eodatahub.org.uk", item, renderId: "VH");
 
         Assert.NotNull(result);
         Assert.Contains(
@@ -105,7 +108,7 @@ public class TitilerXyzUrlBuilderTests
             collection: "sentinel2_ard");
 
         var result = TitilerXyzUrlBuilder.Build(
-            "https://eodatahub.org.uk", item, "cog", renderId: "NDVI");
+            "https://eodatahub.org.uk", item, renderId: "NDVI");
 
         Assert.NotNull(result);
         Assert.Contains("bidx=7&bidx=3", result);
@@ -134,7 +137,7 @@ public class TitilerXyzUrlBuilderTests
             collection: "land_cover");
 
         var result = TitilerXyzUrlBuilder.Build(
-            "https://eodatahub.org.uk", item, "GeoTIFF");
+            "https://eodatahub.org.uk", item);
 
         Assert.NotNull(result);
         Assert.Contains("title=Land%20Cover%20Map", result);
@@ -162,17 +165,18 @@ public class TitilerXyzUrlBuilderTests
             new StacAsset("https://example.test/data.tif", "image/tiff", null, ["data"], null),
             collection: "sentinel2_ard");
 
-        Assert.Null(TitilerXyzUrlBuilder.Build("https://eodatahub.org.uk", item, "cog"));
+        Assert.Null(TitilerXyzUrlBuilder.Build("https://eodatahub.org.uk", item));
     }
 
     [Fact]
-    public void Build_ReturnsNullForUnknownAsset()
+    public void Build_ReturnsNullWhenConfiguredAssetIsMissing()
     {
-        var item = CreateItem("https://example.test/item", "cog",
+        var item = CreateItem("https://example.test/item", "other",
             new StacAsset("https://example.test/data.tif", "image/tiff", null, ["data"], null),
             collection: "sentinel2_ard");
 
-        Assert.Null(TitilerXyzUrlBuilder.Build("https://eodatahub.org.uk", item, "missing"));
+        Assert.False(TitilerXyzUrlBuilder.CanBuild(item));
+        Assert.Null(TitilerXyzUrlBuilder.Build("https://eodatahub.org.uk", item));
     }
 
     [Fact]
@@ -190,7 +194,7 @@ public class TitilerXyzUrlBuilderTests
             collection: "eocis-sst-cdrv3");
 
         var result = TitilerXyzUrlBuilder.Build(
-            "https://eodatahub.org.uk", item, "reference_file");
+            "https://eodatahub.org.uk", item);
 
         Assert.NotNull(result);
         Assert.StartsWith(
@@ -203,7 +207,7 @@ public class TitilerXyzUrlBuilderTests
         Assert.Contains("rescale=271%2C306", result);
         Assert.Contains("reference=true", result);
         Assert.Contains("id=analysed_sst", result);
-        Assert.True(TitilerXyzUrlBuilder.CanBuild(item, "reference_file"));
+        Assert.True(TitilerXyzUrlBuilder.CanBuild(item));
     }
 
     [Fact]
@@ -220,9 +224,9 @@ public class TitilerXyzUrlBuilderTests
                 null),
             collection: "PSScene");
 
-        Assert.False(TitilerXyzUrlBuilder.CanBuild(item, "thumbnail"));
+        Assert.False(TitilerXyzUrlBuilder.CanBuild(item));
         Assert.Null(TitilerXyzUrlBuilder.Build(
-            "https://eodatahub.org.uk", item, "thumbnail"));
+            "https://eodatahub.org.uk", item));
     }
 
     [Fact]
@@ -239,9 +243,10 @@ public class TitilerXyzUrlBuilderTests
                 null),
             collection: "unknown");
 
-        Assert.False(TitilerXyzUrlBuilder.CanBuild(item, "data"));
+        Assert.False(TitilerXyzUrlBuilder.CanBuild(item));
+        Assert.Null(TitilerXyzUrlBuilder.GetDefaultRenderTitle(item));
         Assert.Null(TitilerXyzUrlBuilder.Build(
-            "https://eodatahub.org.uk", item, "data"));
+            "https://eodatahub.org.uk", item));
     }
 
     private static StacItem CreateItem(
