@@ -8,6 +8,64 @@
 
     <UserControl.Resources>
         <converters:BoolToVisibilityConverter x:Key="BoolToVis" />
+        <Style x:Key="EodhPrimaryButtonStyle"
+               TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="#4C72BA" />
+            <Setter Property="BorderBrush" Value="#4C72BA" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Padding" Value="8,7" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="ButtonChrome"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="0"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Margin="{TemplateBinding Padding}"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonChrome"
+                                        Property="Background"
+                                        Value="#3F64AB" />
+                                <Setter TargetName="ButtonChrome"
+                                        Property="BorderBrush"
+                                        Value="#3F64AB" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonChrome"
+                                        Property="Background"
+                                        Value="#355898" />
+                                <Setter TargetName="ButtonChrome"
+                                        Property="BorderBrush"
+                                        Value="#355898" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonChrome"
+                                        Property="BorderBrush"
+                                        Value="#24395D" />
+                                <Setter TargetName="ButtonChrome"
+                                        Property="BorderThickness"
+                                        Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonChrome"
+                                        Property="Opacity"
+                                        Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="16" ClipToBounds="True">
@@ -43,17 +101,13 @@
         <StackPanel VerticalAlignment="Center"
                     MaxWidth="350"
                     Margin="0,12">
-            <Border Background="#FFF5F7FB"
-                    BorderBrush="#204C72BA"
-                    BorderThickness="1"
-                    Padding="10,4"
-                    HorizontalAlignment="Center"
-                    Margin="0,0,0,14">
-                <Image Source="/eodh;component/Images/Brand/eodh-logo-colour.png"
-                       Width="218"
-                       Height="81"
-                       Stretch="Uniform" />
-            </Border>
+            <Image Source="/eodh;component/Images/Brand/eodh-logo-colour.png"
+                   Width="218"
+                   Height="81"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,14"
+                   SnapsToDevicePixels="True" />
 
             <TextBlock Text="Connect your workspace"
                        FontSize="20"
@@ -79,13 +133,30 @@
                          Margin="0,0,0,4" />
             <TextBlock Text="Paste the API Key, not the Token ID."
                        FontSize="11" Opacity="0.7" Margin="0,0,0,5" />
-            <TextBlock FontSize="11" Margin="0,0,0,16">
-                <Hyperlink NavigateUri="https://docs.eodatahub.org.uk/Getting-Started/workspaces/workspace-credentials/"
-                           RequestNavigate="OpenLink_RequestNavigate">EODH documentation</Hyperlink>
-                <LineBreak />
-                <Hyperlink NavigateUri="{Binding WorkspaceCredentialsUri}"
-                           RequestNavigate="OpenLink_RequestNavigate">Open EODH workspace credentials</Hyperlink>
-            </TextBlock>
+            <StackPanel Margin="0,0,0,16">
+                <TextBlock FontSize="11" Margin="0,0,0,2">
+                    <Hyperlink NavigateUri="https://docs.eodatahub.org.uk/Getting-Started/workspaces/workspace-credentials/"
+                               RequestNavigate="OpenLink_RequestNavigate"
+                               ToolTip="Open the EODH workspace documentation">
+                        <Run Text="&#xE8A5;"
+                             FontFamily="Segoe MDL2 Assets"
+                             FontSize="12"
+                             BaselineAlignment="Center" />
+                        <Run Text="  EODH documentation" />
+                    </Hyperlink>
+                </TextBlock>
+                <TextBlock FontSize="11">
+                    <Hyperlink NavigateUri="{Binding WorkspaceCredentialsUri}"
+                               RequestNavigate="OpenLink_RequestNavigate"
+                               ToolTip="Open credentials for this EODH workspace">
+                        <Run Text="&#xE8D7;"
+                             FontFamily="Segoe MDL2 Assets"
+                             FontSize="12"
+                             BaselineAlignment="Center" />
+                        <Run Text="  Open EODH workspace credentials" />
+                    </Hyperlink>
+                </TextBlock>
+            </StackPanel>
 
             <!-- Error message -->
             <TextBlock Text="{Binding ErrorMessage}"
@@ -97,11 +168,8 @@
             <!-- Login button -->
             <Button Content="Connect"
                     Command="{Binding LoginCommand}"
+                    Style="{StaticResource EodhPrimaryButtonStyle}"
                     HorizontalAlignment="Stretch"
-                    Padding="8,7"
-                    Background="#4C72BA"
-                    BorderBrush="#4C72BA"
-                    Foreground="White"
                     IsDefault="True" />
 
             <!-- Loading indicator -->
