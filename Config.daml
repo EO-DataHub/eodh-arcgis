@@ -5,7 +5,7 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://schemas.esri.com/DADF/Registry file:///C:/Program%20Files/ArcGIS/Pro/bin/ArcGIS.Desktop.Framework.xsd">
 
-  <AddInInfo id="{3a954d6c-8c15-4da5-be39-c7936b4eea22}" version="1.0" desktopVersion="3.6.59527" product="ArcGISPro">
+  <AddInInfo id="{3a954d6c-8c15-4da5-be39-c7936b4eea22}" version="0.2.4" desktopVersion="3.6.59527" product="ArcGISPro">
     <Name>EODH</Name>
     <Description>Search, filter, preview, and load datasets from the UK EO Data Hub</Description>
     <Image>Images\AddInDesktop32.png</Image>

@@ -21,8 +21,81 @@ jobs:
       - name: Restore packages
         run: dotnet restore eodh.slnx
 
+      - name: Set add-in version from tag
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          ADDIN_VERSION: ${{ github.ref_name }}
+        run: |
+          if ($env:ADDIN_VERSION -notmatch '^\d+(?:\.\d+){1,3}$') {
+            throw "Tag '$env:ADDIN_VERSION' is not a valid ArcGIS add-in version. Use 2 to 4 numeric components, for example 1.2.3."
+          }
+
+          $configPath = Join-Path $env:GITHUB_WORKSPACE 'Config.daml'
+          [xml]$config = Get-Content -LiteralPath $configPath
+          $namespaces = [System.Xml.XmlNamespaceManager]::new($config.NameTable)
+          $namespaces.AddNamespace('daml', $config.DocumentElement.NamespaceURI)
+          $addInInfo = $config.SelectSingleNode('/daml:ArcGIS/daml:AddInInfo', $namespaces)
+
+          if ($null -eq $addInInfo) {
+            throw 'Could not find AddInInfo in Config.daml.'
+          }
+
+          $addInInfo.SetAttribute('version', $env:ADDIN_VERSION)
+          $config.Save($configPath)
+          Write-Host "Set add-in version to $env:ADDIN_VERSION"
+
       - name: Build
         run: msbuild eodh.csproj -p:Configuration=Release
+
+      - name: Verify packaged add-in version
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          ADDIN_VERSION: ${{ github.ref_name }}
+        run: |
+          $packagePath = Join-Path $env:GITHUB_WORKSPACE 'bin/Release/net8.0-windows/eodh.esriAddinX'
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($packagePath)
+
+          try {
+            $configEntry = $archive.Entries |
+              Where-Object { $_.Name -eq 'Config.daml' } |
+              Select-Object -First 1
+
+            if ($null -eq $configEntry) {
+              throw 'The packaged add-in does not contain Config.daml.'
+            }
+
+            $reader = [System.IO.StreamReader]::new($configEntry.Open())
+            try {
+              [xml]$packagedConfig = $reader.ReadToEnd()
+            }
+            finally {
+              $reader.Dispose()
+            }
+
+            $namespaces = [System.Xml.XmlNamespaceManager]::new($packagedConfig.NameTable)
+            $namespaces.AddNamespace('daml', $packagedConfig.DocumentElement.NamespaceURI)
+            $packagedAddInInfo = $packagedConfig.SelectSingleNode(
+              '/daml:ArcGIS/daml:AddInInfo',
+              $namespaces
+            )
+
+            if ($null -eq $packagedAddInInfo) {
+              throw 'Could not find AddInInfo in the packaged Config.daml.'
+            }
+
+            $packagedVersion = $packagedAddInInfo.GetAttribute('version')
+
+            if ($packagedVersion -ne $env:ADDIN_VERSION) {
+              throw "Packaged add-in version '$packagedVersion' does not match tag '$env:ADDIN_VERSION'."
+            }
+
+            Write-Host "Verified packaged add-in version $packagedVersion"
+          }
+          finally {
+            $archive.Dispose()
+          }
 
       - name: Build tests
         run: msbuild eodh.Tests/eodh.Tests.csproj -p:Configuration=Release -p:SkipArcGISTargets=true
